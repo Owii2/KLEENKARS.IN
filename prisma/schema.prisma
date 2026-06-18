@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Booking {
+  id String @id @default(cuid())
+
+  email        String? @unique
+  customerName String
+  phoneNumber  String
+
+  vehicleType        String
+  serviceType        String
+  assignedEmployeeId String?
+
+  assignedEmployeeName String?
+
+  startedAt DateTime?
+
+  completedAt DateTime?
+
+  paymentMode String?
+
+  discount Int @default(0)
+
+  finalAmount Int?
+
+  notes  String?
+  addons String[]
+
+  referralCode     String?
+  referralRewarded Boolean @default(false)
+
+  pickupDrop  Boolean
+  lastLogin   DateTime?
+  bookingDate String
+  bookingTime String
+
+  totalCost Int
+
+  status String @default("Pending")
+
+  assignedTo String?
+
+  customerRating Int?
+
+  createdAt  DateTime  @default(now())
+  customerId String? // Link to Customer model
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  serviceId  String? // Link to Service model
+  service    Service?  @relation(fields: [serviceId], references: [id])
+}
+
+model Customer {
+  id                String    @id @default(cuid())
+  customerName      String
+  phoneNumber       String    @unique
+  vehicleNumber     String? // This old field will be managed by new Vehicle model
+  vehicleType       String? // This old field will be managed by new Vehicle model
+  totalVisits       Int       @default(0)
+  totalSpent        Int       @default(0)
+  lastVisit         DateTime?
+  isBlacklisted     Boolean   @default(false)
+  tag               String? // This old field will be replaced by categories
+  email             String?   @unique
+  password          String?
+  resetToken        String?
+  resetTokenExpires DateTime?
+  otpHash           String?
+  otpExpires        DateTime?
+  referralCode      String?   @unique
+  referralPoints    Int       @default(0)
+  referredBy        String?
+  notes             String?
+  primaryCategory   String    @default("NEW")
+  secondaryCategory String? // For INACTIVE
+  isCategoryLocked  Boolean   @default(false)
+  categoryHistory   Json? // Store an array of objects { date, category, changedBy }
+  visitHistory      Json? // Store an array of visit dates
+  spendingHistory   Json? // Store an array of { date, amount }
+  createdAt         DateTime  @default(now())
+
+  refreshTokens RefreshToken[]
+  vehicles      Vehicle[]
+  memberships   Membership[]
+  rewardPoints  RewardPoint[]
+  Booking       Booking[]
+}
+
+model Employee {
+  id String @id @default(cuid())
+
+  employeeCode String @unique
+
+  name String
+
+  phoneNumber String @unique
+
+  email      String?   @unique
+  otpHash    String?
+  otpExpires DateTime?
+
+  password String
+
+  role String
+
+  status String @default("active")
+
+  salaryPerDay Int
+
+  joiningDate DateTime @default(now())
+
+  aadhaarNumber String?
+
+  address String?
+
+  emergencyContact String?
+
+  branch String?
+
+  shiftType String?
+
+  notes String?
+
+  jobsCompleted Int @default(0)
+
+  revenueGenerated Int @default(0)
+
+  totalUpsells Int @default(0)
+
+  attendancePercent Float @default(100)
+
+  customerRating Float @default(5)
+
+  penalties Int @default(0)
+
+  incentives Int @default(0)
+
+  lastLogin DateTime?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+model Attendance {
+  id String @id @default(cuid())
+
+  employeeId String
+
+  employeeCode String
+
+  employeeName String
+
+  checkIn DateTime @default(now())
+
+  checkOut DateTime?
+
+  attendanceStatus String
+
+  notes String?
+}
+
+model Expense {
+  id String @id @default(cuid())
+
+  title String
+
+  amount Int
+
+  category String
+
+  paymentMode String
+
+  notes String?
+
+  createdBy String?
+
+  createdAt DateTime @default(now())
+}
+
+model DailyClosing {
+  id String @id @default(cuid())
+
+  date String @unique
+
+  totalRevenue Int
+
+  totalExpenses Int
+
+  netProfit Int
+
+  totalBookings Int
+
+  cashRevenue Int
+
+  upiRevenue Int
+
+  createdAt DateTime @default(now())
+}
+
+model ReferralRedemption {
+  id         String   @id @default(cuid())
+  customerId String
+  points     Int
+  createdAt  DateTime @default(now())
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  customerId String
+  expiresAt  DateTime
+  revoked    Boolean  @default(false)
+  replacedBy String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  price       Int
+  category    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  Booking     Booking[]
+}
+
+model Offer {
+  id                          String    @id @default(cuid())
+  title                       String
+  description                 String?
+  discountPercent             Int       @default(0)
+  discountAmount              Int       @default(0)
+  validDays                   String[]
+  startTime                   String?
+  endTime                     String?
+  applicableServiceIds        String[]
+  minVehicles                 Int       @default(1)
+  discountSecondVehicleAmount Int       @default(0)
+  code                        String?   @unique
+  isActive                    Boolean   @default(true)
+  validUntil                  DateTime?
+  imageUrl                    String?
+  createdAt                   DateTime  @default(now())
+}
+
+model ApprovalRequest {
+  id           String   @id @default(cuid())
+  entityType   String
+  entityId     String?
+  action       String
+  managerId    String
+  managerName  String?
+  previousData String? // JSON snapshot
+  newData      String? // JSON snapshot
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  plateNumber String   @unique
+  type        String
+  value       Int? // in Lakhs, e.g., 15 for 15 Lakhs
+  createdAt   DateTime @default(now())
+}
+
+model LoyaltyTier {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  minVisits Int?
+  minSpend  Int?
+  benefits  String?  @db.Text // JSON description of benefits
+  rank      Int      @unique // Priority for auto-assignment
+  createdAt DateTime @default(now())
+}
+
+model MembershipPlan {
+  id           String       @id @default(cuid())
+  name         String       @unique
+  price        Int
+  durationDays Int
+  benefits     String?      @db.Text // JSON description of benefits
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+}
+
+model RewardPoint {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  points      Int
+  type        String // EARNED, REDEEMED
+  bookingId   String?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Membership {
+  id               String         @id @default(cuid())
+  customerId       String
+  customer         Customer       @relation(fields: [customerId], references: [id])
+  membershipPlanId String
+  membershipPlan   MembershipPlan @relation(fields: [membershipPlanId], references: [id])
+  startDate        DateTime
+  endDate          DateTime?
+  status           String         @default("ACTIVE")
+  createdAt        DateTime       @default(now())
+}
