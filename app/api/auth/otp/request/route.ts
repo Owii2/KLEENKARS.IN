@@ -1,10 +1,15 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import twilio from 'twilio';
+
+interface OtpRequestBody {
+  phoneNumber?: string;
+}
 
 export async function POST(req: Request) {
   try {
-    const { phoneNumber } = await req.json();
+    const { phoneNumber } = await req.json() as OtpRequestBody;
     if (!phoneNumber) return NextResponse.json({ success: false, message: 'phoneNumber required' }, { status: 400 });
 
     // generate 6-digit code
@@ -13,7 +18,7 @@ export async function POST(req: Request) {
     const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     // find or create customer
-    let customer = await prisma.customer.findUnique({ where: { phoneNumber } }).catch(() => null as any);
+    let customer = await prisma.customer.findUnique({ where: { phoneNumber } });
     if (!customer) {
       customer = await prisma.customer.create({ data: { phoneNumber, customerName: 'Guest' } });
     }
@@ -23,8 +28,7 @@ export async function POST(req: Request) {
     // send via Twilio if configured
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) {
       try {
-        const Twilio = require('twilio');
-        const client = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.messages.create({ body: `Your verification code is ${code}`, from: process.env.TWILIO_FROM, to: phoneNumber });
       } catch (e) {
         console.error('Twilio send error', e);

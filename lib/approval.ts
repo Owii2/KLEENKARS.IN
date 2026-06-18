@@ -6,8 +6,8 @@ export async function createApprovalRequest(
   action: "CREATE" | "UPDATE" | "DELETE",
   managerId: string,
   managerName: string,
-  previousData: any = null,
-  newData: any = null
+  previousData: unknown = null,
+  newData: unknown = null
 ) {
   // Get auto-approval days
   const settings = await prisma.systemSetting.findUnique({ where: { key: "AUTO_APPROVAL_DAYS" } });

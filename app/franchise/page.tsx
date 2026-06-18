@@ -326,6 +326,7 @@ export default function FranchisePage() {
                         </p>
                         <div className="grid gap-3 sm:grid-cols-3">
                           {form.propertyPhotos.map((photo, index) => (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               key={index}
                               src={photo}

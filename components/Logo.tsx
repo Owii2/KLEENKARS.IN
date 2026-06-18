@@ -11,7 +11,7 @@ export default function Logo({ width = 260, height, className = "" }: LogoProps)
   return (
     <Link
       href="/"
-      className={`inline-flex items-center rounded bg-black p-2 ${className}`}
+      className={`inline-flex items-center ${className}`}
       aria-label="Kleenkars"
     >
       <Image

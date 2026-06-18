@@ -2,11 +2,29 @@
 
 import { useEffect, useState } from "react";
 
+interface ReferralReportItem {
+  customer: {
+    id: string;
+    customerName: string;
+    phoneNumber: string;
+    referralCode: string | null;
+    referralPoints: number;
+  };
+  redemptions: number;
+}
+
+interface ReferralReportResponse {
+  success: boolean;
+  report?: ReferralReportItem[];
+}
+
 export default function AdminReferrals() {
-  const [list, setList] = useState<any[]>([]);
+  const [list, setList] = useState<ReferralReportItem[]>([]);
 
   const fetchReport = () => {
-    fetch('/api/admin/referrals/report').then(r=>r.json()).then(j=>{ if(j.success) setList(j.report || []); });
+    fetch('/api/admin/referrals/report')
+      .then(r=>r.json() as Promise<ReferralReportResponse>)
+      .then(j=>{ if(j.success) setList(j.report || []); });
   };
 
   useEffect(()=>{ fetchReport(); },[]);
@@ -23,7 +41,7 @@ export default function AdminReferrals() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Referral Programs</h1>
       <div className="space-y-3">
-        {list.map((item: any) => (
+        {list.map((item) => (
           <div key={item.customer.id} className="p-4 bg-zinc-900 rounded flex justify-between">
             <div>
               <div className="font-bold">{item.customer.customerName} • {item.customer.phoneNumber}</div>

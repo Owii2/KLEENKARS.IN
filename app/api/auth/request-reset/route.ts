@@ -2,10 +2,15 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '@/lib/email';
+import twilio from 'twilio';
+
+interface RequestResetBody {
+  email?: string;
+}
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const { email } = await req.json() as RequestResetBody;
     if (!email) return NextResponse.json({ success: false, message: 'email required' }, { status: 400 });
     
     // Find customer by email or phone
@@ -50,8 +55,7 @@ export async function POST(req: Request) {
     // Also send via Twilio if configured
     if (user.phoneNumber && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) {
       try {
-        const Twilio = require('twilio');
-        const client = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.messages.create({
           body: `Your password reset code is ${code}`,
           from: process.env.TWILIO_FROM,

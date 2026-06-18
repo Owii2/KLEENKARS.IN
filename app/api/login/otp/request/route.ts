@@ -2,10 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
+import twilio from "twilio";
+
+interface LoginOtpRequestBody {
+  identifier?: string;
+  method?: "email" | "mobile";
+}
 
 export async function POST(req: Request) {
   try {
-    const { identifier, method } = await req.json();
+    const { identifier, method } = await req.json() as LoginOtpRequestBody;
 
     if (!identifier) {
       return NextResponse.json({ success: false, message: "Missing identifier" }, { status: 400 });
@@ -34,7 +40,7 @@ export async function POST(req: Request) {
       data: { otpHash: hashed, otpExpires: expires }
     });
 
-    let sentVia = "";
+    const sentVia: string[] = [];
 
     // Send via Email if requested
     if ((method === "email" || !method) && employee.email) {
@@ -55,21 +61,20 @@ export async function POST(req: Request) {
         `
       });
       if (emailResult.success) {
-        sentVia += "email ";
+        sentVia.push("email");
       }
     }
 
     // Send via Mobile if requested
     if ((method === "mobile" || !method) && employee.phoneNumber && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) {
       try {
-        const Twilio = require('twilio');
-        const client = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.messages.create({
           body: `Your login code is ${code}`,
           from: process.env.TWILIO_FROM,
           to: employee.phoneNumber
         });
-        sentVia += "mobile ";
+        sentVia.push("mobile");
       } catch (e) {
         console.error('Twilio send error', e);
       }
@@ -86,7 +91,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "No mobile number registered for this user" });
     }
 
-    return NextResponse.json({ success: true, message: `OTP sent to ${method || "your registered contact"}` });
+    return NextResponse.json({ success: true, message: `OTP sent to ${sentVia.join(" and ") || method || "your registered contact"}` });
   } catch (error) {
     console.log(error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });

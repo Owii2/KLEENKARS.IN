@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import Card from "@/components/ui/Card";
@@ -53,7 +53,7 @@ export default function EmployeeAttendanceMonthPage({
   const monthIndex = Number(params.month) - 1;
   const monthName = monthNames[monthIndex] || "Unknown";
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -83,11 +83,11 @@ export default function EmployeeAttendanceMonthPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.employeeId]);
 
   useEffect(() => {
     fetchData();
-  }, [params.employeeId, params.month]);
+  }, [fetchData]);
 
   const selectedRecords = useMemo(() => {
     if (monthIndex < 0 || monthIndex > 11) return [];

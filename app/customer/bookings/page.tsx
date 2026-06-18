@@ -6,42 +6,61 @@ import { useRouter } from "next/navigation";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
+interface CustomerUser {
+  name?: string;
+  phone: string;
+  email?: string;
+}
+
+interface LocalBooking {
+  id: string;
+  name?: string;
+  phone: string;
+  service: string;
+  amount: number;
+  date: string;
+  time?: string;
+  status: string;
+  vehicle?: string;
+  addons?: string[];
+}
+
 export default function BookingsPage() {
-  const [user, setUser] = useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [user, setUser] = useState<CustomerUser | null>(null);
+  const [bookings, setBookings] = useState<LocalBooking[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("customerUser");
-    const u = stored ? JSON.parse(stored) : null;
+    const u = stored ? JSON.parse(stored) as CustomerUser : null;
     setUser(u);
-    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]");
-    setBookings(all.filter((b: any) => b.phone === u?.phone).sort((a: any, b: any) => (a.date > b.date ? 1 : -1)));
+    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
+    setBookings(all.filter((b) => b.phone === u?.phone).sort((a, b) => (a.date > b.date ? 1 : -1)));
   }, []);
 
   const refresh = () => {
-    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]");
+    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
     const stored = window.localStorage.getItem("customerUser");
-    const u = stored ? JSON.parse(stored) : null;
-    setBookings(all.filter((b: any) => b.phone === u?.phone));
+    const u = stored ? JSON.parse(stored) as CustomerUser : null;
+    setBookings(all.filter((b) => b.phone === u?.phone));
   };
 
   const cancel = (id: string) => {
-    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]");
-    const idx = all.findIndex((x: any) => x.id === id);
+    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
+    const idx = all.findIndex((x) => x.id === id);
     if (idx === -1) return;
     all[idx].status = "Cancelled";
     window.localStorage.setItem("bookings", JSON.stringify(all));
     refresh();
   };
 
-  const rebook = (b: any) => {
+  const rebook = (b: LocalBooking) => {
     window.localStorage.setItem("rebookItem", JSON.stringify(b));
     router.push("/booking");
   };
 
-  const generatePdf = (b: any) => {
+  const generatePdf = (b: LocalBooking) => {
     // render an HTML invoice, capture with html2canvas and save via jsPDF
     const container = document.createElement('div');
     container.style.position = 'fixed';

@@ -10,12 +10,9 @@ datasource db {
 model Booking {
   id String @id @default(cuid())
 
-  email        String? @unique
-  customerName String
-  phoneNumber  String
-
-  vehicleType        String
-  serviceType        String
+  email              String? @unique
+  customerName       String
+  phoneNumber        String
   assignedEmployeeId String?
 
   assignedEmployeeName String?
@@ -30,8 +27,7 @@ model Booking {
 
   finalAmount Int?
 
-  notes  String?
-  addons String[]
+  notes String?
 
   referralCode     String?
   referralRewarded Boolean @default(false)
@@ -46,6 +42,7 @@ model Booking {
   status String @default("Pending")
 
   assignedTo String?
+  details    Json? // [{ vehicleType, serviceId, addons: [id] }]
 
   customerRating Int?
 

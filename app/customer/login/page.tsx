@@ -3,6 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+interface StoredCustomer {
+  name: string;
+  phone: string;
+  email: string;
+  createdAt?: string;
+  lastVisit?: string;
+  totalSpend?: number;
+  visits?: number;
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup" | "otp" | "forgot" | "reset-password">("login");
   const [name, setName] = useState("");
@@ -20,8 +30,8 @@ export default function LoginPage() {
     const now = new Date().toISOString();
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("customers") || "[]";
-    const customers = JSON.parse(stored);
-    const existing = customers.find((c: any) => c.phone === data.phone);
+    const customers = JSON.parse(stored) as StoredCustomer[];
+    const existing = customers.find((c) => c.phone === data.phone);
     if (existing) {
       existing.name = data.name || existing.name;
       existing.email = data.email || existing.email;

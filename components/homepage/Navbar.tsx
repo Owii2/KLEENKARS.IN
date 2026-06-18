@@ -29,12 +29,8 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#08080a]/90 backdrop-blur-2xl shadow-black/30">
-      <div className="main-container flex h-24 items-center justify-between gap-6">
-        <div className="flex flex-col justify-center gap-1 items-start">
-          <Logo width={170} height={48} />
-          <span className="text-sm uppercase tracking-[0.32em] text-red-400">Premium Car Care</span>
-        </div>
-
+      <div className="main-container flex h-20 items-center justify-between gap-6">
+        <Logo width={230} height={65} className="mt-1" />
         <nav className="hidden items-center gap-8 lg:flex">
           {links.map((link) => (
             <Link

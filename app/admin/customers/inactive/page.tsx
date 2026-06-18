@@ -4,16 +4,22 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import Card from "@/components/ui/Card";
 
+interface LocalCustomer {
+  name: string;
+  phone: string;
+  lastVisit: string;
+}
+
 export default function InactiveCustomers(){
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<LocalCustomer[]>([]);
 
   useEffect(()=>{
     if(typeof window === 'undefined') return;
     const stored = localStorage.getItem('customers') || '[]';
-    const parsed = JSON.parse(stored);
+    const parsed = JSON.parse(stored) as LocalCustomer[];
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 45);
-    const inactive = parsed.filter((c:any)=> new Date(c.lastVisit) < cutoff);
+    const inactive = parsed.filter((c)=> new Date(c.lastVisit) < cutoff);
     setCustomers(inactive);
   },[]);
 

@@ -3,25 +3,37 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+interface CustomerUser {
+  name?: string;
+  phone: string;
+  email?: string;
+}
+
+interface LocalBooking {
+  phone: string;
+  amount?: number;
+}
+
+interface LocalMembership {
+  planName?: string;
+}
+
 export default function CustomerDashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [membership, setMembership] = useState<any>(null);
-  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [user, setUser] = useState<CustomerUser | null>(null);
+  const [bookings, setBookings] = useState<LocalBooking[]>([]);
+  const [membership, setMembership] = useState<LocalMembership | null>(null);
   const [referralPoints, setReferralPoints] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("customerUser");
-    const u = stored ? JSON.parse(stored) : null;
+    const u = stored ? JSON.parse(stored) as CustomerUser : null;
     setUser(u);
     if (u) {
-      const all = JSON.parse(window.localStorage.getItem("bookings") || "[]");
-      setBookings(all.filter((b: any) => b.phone === u.phone));
+      const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
+      setBookings(all.filter((b) => b.phone === u.phone));
       const m = window.localStorage.getItem(`membership_${u.phone}`);
-      setMembership(m ? JSON.parse(m) : null);
-      const rc = window.localStorage.getItem(`referral_${u.phone}`);
-      setReferralCode(rc);
+      setMembership(m ? JSON.parse(m) as LocalMembership : null);
       setReferralPoints(Number(window.localStorage.getItem(`referral_points_${u.phone}`) || 0));
     }
   }, []);

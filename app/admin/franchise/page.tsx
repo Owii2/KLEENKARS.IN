@@ -200,6 +200,7 @@ export default function AdminFranchisePage() {
                           <p className="font-semibold">Photos:</p>
                           <div className="grid gap-3 sm:grid-cols-3">
                             {application.propertyPhotos.map((photo, photoIndex) => (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 key={photoIndex}
                                 src={photo}

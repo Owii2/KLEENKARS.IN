@@ -10,6 +10,12 @@ interface Offer {
   title: string;
   description: string;
   imageUrl: string;
+  isActive: boolean;
+}
+
+interface OffersResponse {
+  success: boolean;
+  offers?: Offer[];
 }
 
 export default function HomePage() {
@@ -23,11 +29,11 @@ export default function HomePage() {
     if (!hasSeenOffer) {
       // Fetch active offers
       fetch("/api/offers")
-        .then(res => res.json())
+        .then(res => res.json() as Promise<OffersResponse>)
         .then(data => {
           if (data.success && data.offers && data.offers.length > 0) {
             // Find the first active offer that has an image poster
-            const offerWithImage = data.offers.find((o: any) => o.isActive && o.imageUrl);
+            const offerWithImage = data.offers.find((o) => o.isActive && o.imageUrl);
             if (offerWithImage) {
               setActiveOffer(offerWithImage);
               setShowOfferPopup(true);
@@ -94,6 +100,7 @@ export default function HomePage() {
               ✕
             </button>
             <div className="relative aspect-auto max-h-[60vh] overflow-hidden bg-black flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
                 src={activeOffer.imageUrl} 
                 alt={activeOffer.title} 

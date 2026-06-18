@@ -1,6 +1,22 @@
 import nodemailer from "nodemailer";
 
-export function getEmailTransporter() {
+interface MailOptions {
+  from?: string;
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}
+
+interface MailResult {
+  messageId?: string;
+}
+
+interface EmailTransporter {
+  sendMail(options: MailOptions): Promise<MailResult>;
+}
+
+export function getEmailTransporter(): EmailTransporter {
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const port = Number(process.env.SMTP_PORT || 587);
   const secure = process.env.SMTP_SECURE === "true" || port === 465;
@@ -10,7 +26,7 @@ export function getEmailTransporter() {
   if (!user || !pass) {
     console.warn("SMTP configuration is incomplete. Falling back to mock email logging.");
     return {
-      sendMail: async (options: { to: string; subject: string; text: string; html?: string }) => {
+      sendMail: async (options: MailOptions) => {
         console.log(`[MOCK EMAIL SENT] To: ${options.to} | Subject: ${options.subject} | Content: ${options.text}`);
         return { messageId: "mock-id-" + Date.now() };
       }
@@ -25,7 +41,7 @@ export function getEmailTransporter() {
       user,
       pass,
     },
-  } as any);
+  }) as EmailTransporter;
 }
 
 export async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text: string; html?: string }) {
@@ -39,7 +55,7 @@ export async function sendEmail({ to, subject, text, html }: { to: string; subje
       subject,
       text,
       html: html || text,
-    }) as any;
+    });
     console.log(`Email sent successfully: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {

@@ -6,8 +6,12 @@ function generateCode(phone: string) {
   return "OWII" + phone.slice(-4);
 }
 
+interface CustomerUser {
+  phone: string;
+}
+
 export default function ReferralPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<CustomerUser | null>(null);
   const [code, setCode] = useState("");
   const [points, setPoints] = useState(0);
   const [redeeming, setRedeeming] = useState(false);
@@ -15,7 +19,7 @@ export default function ReferralPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const s = window.localStorage.getItem("customerUser");
-    const u = s ? JSON.parse(s) : null;
+    const u = s ? JSON.parse(s) as CustomerUser : null;
     setUser(u);
     if (u) {
       const stored = window.localStorage.getItem(`referral_${u.phone}`);

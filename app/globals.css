@@ -58,3 +58,14 @@ body ::selection {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
+
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+  color: white;
+}
+
+.calendar-picker::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}

@@ -1,61 +1,183 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-type VehicleType = "bike" | "hatchback" | "sedan" | "suv" | "muv";
+import {
+  calculateDiscount,
+  getIncludedAddonIds,
+  getVehicleTypesForSuffix,
+  pickupDropPricePerVehicle,
+  vehicleSpecificServicePattern,
+  type PricingOffer,
+  type VehicleType,
+} from "@/lib/bookingPricing";
 
 interface Service {
   id: string;
   name: string;
-  price: number;
+  price: number; // Default price, or price for a base vehicle type
   category: string;
+  includedAddonIds?: string[];
+  vehiclePrices?: Partial<Record<VehicleType, number>>; // Price variations per vehicle type
+  vehicleServiceIds?: Partial<Record<VehicleType, string>>;
 }
 
-interface Offer {
-  id: string;
-  title: string;
-  discountPercent: number;
-  discountAmount: number;
-  validDays: string[];
-  startTime: string | null;
-  endTime: string | null;
-  applicableServiceIds: string[];
-  minVehicles: number;
-  discountSecondVehicleAmount: number;
-  code: string | null;
-  isActive: boolean;
-  validUntil: string | null;
+type Offer = PricingOffer;
+
+interface ServicesResponse {
+  success: boolean;
+  services: Array<Service & { isActive?: boolean }>;
+}
+
+interface OffersResponse {
+  success: boolean;
+  offers: Offer[];
+}
+
+interface VehicleDetail {
+  vehicleType: string;
+  serviceId: string;
+  addons: string[];
 }
 
 export default function BookingPage() {
   const [dbServices, setDbServices] = useState<Service[]>([]);
   const [dbOffers, setDbOffers] = useState<Offer[]>([]);
-  
+  const [displayServices, setDisplayServices] = useState<Service[]>([]); // New state for consolidated services
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [optionsError, setOptionsError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     Promise.all([
-      fetch('/api/services').then(res => res.json()),
-      fetch('/api/offers').then(res => res.json())
+      fetch('/api/services').then(res => res.json() as Promise<ServicesResponse>),
+      fetch('/api/offers').then(res => res.json() as Promise<OffersResponse>)
     ]).then(([servicesData, offersData]) => {
       if (servicesData.success) {
-        setDbServices(servicesData.services.filter((s: any) => s.isActive));
+        const activeServices: Service[] = servicesData.services.filter((s) => s.isActive);
+        setDbServices(activeServices);
+
+        // Process services to consolidate vehicle-specific options
+        const processedServices: Service[] = [];
+        const serviceMap: Record<string, Service> = {}; // To store generic services
+
+        activeServices.forEach(svc => {
+          const match = svc.name.match(vehicleSpecificServicePattern);
+          if (match) {
+            const genericName = match[1].trim();
+            const vehicleTypes = getVehicleTypesForSuffix(match[2]);
+
+            if (!serviceMap[genericName]) {
+              // Create a new generic service entry
+              serviceMap[genericName] = {
+                ...svc, // Copy existing properties like category
+                id: `service:${genericName}`, // Use stable UI-only ID for grouped services
+                name: genericName,
+                price: 0, // Will be overridden by vehiclePrices
+                vehiclePrices: {},
+                vehicleServiceIds: {},
+                includedAddonIds: getIncludedAddonIds(genericName, activeServices),
+              };
+            }
+
+            vehicleTypes.forEach((vehicleType) => {
+              serviceMap[genericName].vehiclePrices = {
+                ...serviceMap[genericName].vehiclePrices,
+                [vehicleType]: svc.price,
+              };
+              serviceMap[genericName].vehicleServiceIds = {
+                ...serviceMap[genericName].vehicleServiceIds,
+                [vehicleType]: svc.id,
+              };
+            });
+          } else {
+            // Add-ons and other non-vehicle-specific services
+            processedServices.push({
+              ...svc,
+              includedAddonIds: getIncludedAddonIds(svc.name, activeServices),
+            });
+          }
+        });
+
+        // Add consolidated generic services to processedServices
+        Object.values(serviceMap).forEach(genericSvc => processedServices.push(genericSvc));
+        setDisplayServices(processedServices);
+      } else {
+        setOptionsError("Unable to load service options.");
       }
       if (offersData.success) {
-        setDbOffers(offersData.offers.filter((o: any) => o.isActive));
+        setDbOffers(offersData.offers.filter((o) => o.isActive));
       }
-    }).catch(console.error);
+    }).catch((error) => {
+      console.error(error);
+      setOptionsError("Unable to load service options.");
+    }).finally(() => {
+      setLoadingOptions(false);
+    });
   }, []);
 
-  const washServices = dbServices.filter(s => s.category === 'Wash');
-  const detailServices = dbServices.filter(s => s.category === 'Detailing');
-  const availableAddons = dbServices.filter(s => s.category === 'Addon');
+  // Filter services for display based on displayServices
+  const washServices = displayServices.filter(s => s.category === 'Wash');
+  const detailServices = displayServices.filter(s => s.category === 'Detailing');
+  const availableAddons = displayServices.filter(s => s.category === 'Addon');
+
+  const getResolvedServiceId = (detail: VehicleDetail) => {
+    const selectedService = displayServices.find((service) => service.id === detail.serviceId);
+    const vehicleType = detail.vehicleType as VehicleType;
+
+    return selectedService?.vehicleServiceIds?.[vehicleType] || detail.serviceId;
+  };
+
+  const getServicePrice = (service: Service, vehicleType: string) => {
+    return service.vehiclePrices?.[vehicleType as VehicleType] ?? service.price;
+  };
+
+  const getServiceOptionLabel = (service: Service, vehicleType: string) => {
+    const price = getServicePrice(service, vehicleType);
+    const priceLabel = price > 0 ? `Rs. ${price}` : "Select vehicle type for price";
+
+    return `${service.name} - ${priceLabel}`;
+  };
+
+  const isServiceAvailableForVehicle = (service: Service, vehicleType: string) => {
+    if (!service.vehiclePrices) return true;
+    if (!vehicleType) return true;
+
+    return service.vehiclePrices[vehicleType as VehicleType] !== undefined;
+  };
+
+  const getSelectedService = (detail: VehicleDetail) => {
+    return displayServices.find((service) => service.id === detail.serviceId);
+  };
+
+  const getIncludedAddonIdsForDetail = (detail: VehicleDetail) => {
+    return getSelectedService(detail)?.includedAddonIds || [];
+  };
+
+  const isAddonIncluded = (detail: VehicleDetail, addonId: string) => {
+    return getIncludedAddonIdsForDetail(detail).includes(addonId);
+  };
 
   const [customerName, setCustomerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  const [vehicleType, setVehicleType] = useState("");
-  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [vehiclesCount, setVehiclesCount] = useState<number>(1);
+  const [vehicleDetails, setVehicleDetails] = useState<VehicleDetail[]>([
+    { vehicleType: "", serviceId: "", addons: [] },
+  ]);
 
-  const [addons, setAddons] = useState<string[]>([]);
+  useEffect(() => {
+    setVehicleDetails((currentDetails) => {
+      const newDetails = [...currentDetails];
+      // Adjust the array size to match the number of vehicles
+      while (newDetails.length < vehiclesCount) {
+        newDetails.push({ vehicleType: "", serviceId: "", addons: [] });
+      }
+      if (newDetails.length > vehiclesCount) {
+        newDetails.length = vehiclesCount;
+      }
+      return newDetails;
+    });
+  }, [vehiclesCount]);
 
   const [pickupDrop, setPickupDrop] = useState(false);
 
@@ -63,93 +185,37 @@ export default function BookingPage() {
   const [bookingTime, setBookingTime] = useState("");
   
   const [promoCode, setPromoCode] = useState("");
-  const [vehiclesCount, setVehiclesCount] = useState<number>(1);
-
-  const getDayName = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { weekday: 'long' });
-  };
-
-  const calculateDiscount = (subtotal: number) => {
-    let bestDiscount = 0;
-    let appliedOfferTitle = "";
-
-    const enteredCode = promoCode.trim().toLowerCase();
-
-    for (const offer of dbOffers) {
-      // Check if code matches (if offer has a code) or if auto-apply (offer has no code)
-      const offerCode = offer.code?.trim().toLowerCase();
-      if (offerCode) {
-        if (offerCode !== enteredCode) continue; // Promo code required but doesn't match
-      } else {
-        // Auto-apply offer
-      }
-
-      // Check Expiry
-      if (offer.validUntil && new Date(offer.validUntil) < new Date()) continue;
-
-      // Check Min Vehicles
-      if (vehiclesCount < offer.minVehicles) continue;
-
-      // Check Date
-      if (bookingDate && offer.validDays && offer.validDays.length > 0) {
-        const day = getDayName(bookingDate);
-        if (!offer.validDays.includes(day)) continue;
-      }
-
-      // Check Time
-      if (bookingTime) {
-        if (offer.startTime && bookingTime < offer.startTime) continue;
-        if (offer.endTime && bookingTime > offer.endTime) continue;
-      }
-
-      // Check Applicable Services
-      if (selectedServiceId && offer.applicableServiceIds && offer.applicableServiceIds.length > 0) {
-        if (!offer.applicableServiceIds.includes(selectedServiceId)) continue;
-      }
-
-      // Calculate the potential discount for this offer
-      let currentDiscount = 0;
-      
-      // Calculate normal discount
-      if (offer.discountPercent > 0) {
-        currentDiscount += (subtotal * offer.discountPercent) / 100;
-      } else if (offer.discountAmount > 0) {
-        currentDiscount += offer.discountAmount;
-      }
-
-      // Add multi-vehicle discount if applicable
-      if (vehiclesCount >= 2 && offer.discountSecondVehicleAmount > 0) {
-        currentDiscount += offer.discountSecondVehicleAmount;
-      }
-
-      if (currentDiscount > bestDiscount) {
-        bestDiscount = currentDiscount;
-        appliedOfferTitle = offer.title;
-      }
-    }
-
-    return { discount: bestDiscount, offerTitle: appliedOfferTitle };
-  };
 
   const calculateTotal = () => {
     let subtotal = 0;
-    
-    if (selectedServiceId) {
-      const svc = dbServices.find(s => s.id === selectedServiceId);
-      if (svc) subtotal += (svc.price * vehiclesCount);
-    }
 
-    addons.forEach((addonId) => {
-      const addon = dbServices.find(s => s.id === addonId);
-      if (addon) subtotal += (addon.price * vehiclesCount);
+    vehicleDetails.forEach(detail => {
+      if (detail.serviceId) {
+        const svc = displayServices.find(s => s.id === detail.serviceId);
+        if (svc) subtotal += getServicePrice(svc, detail.vehicleType);
+      }
+      detail.addons.forEach((addonId) => {
+        if (isAddonIncluded(detail, addonId)) return;
+        const addon = dbServices.find(s => s.id === addonId);
+        if (addon) subtotal += addon.price;
+      });
     });
 
     if (pickupDrop) {
-      subtotal += (100 * vehiclesCount);
+      subtotal += (pickupDropPricePerVehicle * vehiclesCount);
     }
 
-    const { discount, offerTitle } = calculateDiscount(subtotal);
+    const { discount, offerTitle } = calculateDiscount({
+      subtotal,
+      offers: dbOffers,
+      details: vehicleDetails.map((detail) => ({
+        ...detail,
+        serviceId: getResolvedServiceId(detail),
+      })),
+      promoCode,
+      bookingDate,
+      bookingTime,
+    });
 
     return { 
       subtotal, 
@@ -159,13 +225,39 @@ export default function BookingPage() {
     };
   };
 
-  const handleAddonChange = (addonId: string) => {
-    if (addons.includes(addonId)) {
-      setAddons(addons.filter((id) => id !== addonId));
-    } else {
-      setAddons([...addons, addonId]);
+  const handleDetailChange = (index: number, field: keyof VehicleDetail, value: string | string[]) => {
+    const newDetails = [...vehicleDetails];
+    if (field === 'addons' && Array.isArray(value)) {
+      newDetails[index].addons = value;
+    } else if (field === 'vehicleType' && typeof value === 'string') {
+      newDetails[index].vehicleType = value;
+      const selectedService = displayServices.find((service) => service.id === newDetails[index].serviceId);
+      if (selectedService && !isServiceAvailableForVehicle(selectedService, value)) {
+        newDetails[index].serviceId = "";
+        newDetails[index].addons = [];
+      }
+    } else if (field === 'serviceId' && typeof value === 'string') {
+      newDetails[index].serviceId = value;
+      const includedAddonIds = displayServices.find((service) => service.id === value)?.includedAddonIds || [];
+      newDetails[index].addons = newDetails[index].addons.filter((addonId) => !includedAddonIds.includes(addonId));
     }
+    setVehicleDetails(newDetails);
   };
+
+  const handleAddonChange = (vehicleIndex: number, addonId: string) => {
+    const newDetails = [...vehicleDetails];
+    if (isAddonIncluded(newDetails[vehicleIndex], addonId)) return;
+
+    const currentAddons = newDetails[vehicleIndex].addons;
+    if (currentAddons.includes(addonId)) {
+      newDetails[vehicleIndex].addons = currentAddons.filter((id) => id !== addonId);
+    } else {
+      newDetails[vehicleIndex].addons.push(addonId);
+    }
+    setVehicleDetails(newDetails);
+  };
+
+  const totals = calculateTotal();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,19 +267,22 @@ export default function BookingPage() {
       return;
     }
 
-    if (!customerName) {
+    const trimmedCustomerName = customerName.trim();
+
+    if (!trimmedCustomerName) {
       alert("Enter customer name");
       return;
     }
 
-    if (!vehicleType) {
-      alert("Select vehicle type");
-      return;
-    }
-
-    if (!selectedServiceId) {
-      alert("Select service");
-      return;
+    for (const detail of vehicleDetails) {
+      if (!detail.vehicleType) {
+        alert("Select vehicle type for all vehicles");
+        return;
+      }
+      if (!detail.serviceId) {
+        alert("Select a service for all vehicles");
+        return;
+      }
     }
 
     if (!bookingDate) {
@@ -200,8 +295,9 @@ export default function BookingPage() {
       return;
     }
 
-    const { total, subtotal, discount, offerTitle } = calculateTotal();
+    const { total } = totals;
     const fullPhoneNumber = `+91${phoneNumber}`;
+    setIsSubmitting(true);
 
     try {
       const response = await fetch("/api/bookings", {
@@ -210,12 +306,20 @@ export default function BookingPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          customerName,
+          customerName: trimmedCustomerName,
           phoneNumber: fullPhoneNumber,
-          vehicleType,
-          serviceId: selectedServiceId, // Send ID directly
-          addons: addons, // Send IDs directly
+          details: vehicleDetails.map((detail) => {
+            const includedAddonIds = getIncludedAddonIdsForDetail(detail);
+
+            return {
+              ...detail,
+              serviceId: getResolvedServiceId(detail),
+              addons: detail.addons.filter((addonId) => !includedAddonIds.includes(addonId)),
+              includedAddons: includedAddonIds,
+            };
+          }),
           pickupDrop,
+          promoCode,
           bookingDate,
           bookingTime,
           totalCost: total,
@@ -235,15 +339,26 @@ export default function BookingPage() {
 
       localBookings.push({
         id: data.booking?.id || `BKG${localBookings.length + 1}`,
-        name: customerName,
+        name: trimmedCustomerName,
         phone: fullPhoneNumber,
-        service: selectedServiceId ? dbServices.find(s => s.id === selectedServiceId)?.name : "",
+        service: vehicleDetails.map(d => displayServices.find(s => s.id === d.serviceId)?.name).join(', '),
         amount: total,
         date: bookingDate,
         time: bookingTime,
         status: data.booking?.status || "Pending",
-        vehicleType,
-        addons: addons.map(id => dbServices.find(s => s.id === id)?.name),
+        vehicleType: vehicleDetails.map(d => d.vehicleType).join(', '),
+        addons: vehicleDetails.flatMap((detail) => {
+          const paidAddons = detail.addons
+            .map(id => dbServices.find(s => s.id === id)?.name)
+            .filter((name): name is string => Boolean(name));
+          const includedAddons = getIncludedAddonIdsForDetail(detail).map((id) => {
+            const addonName = dbServices.find(s => s.id === id)?.name;
+
+            return addonName ? `${addonName} (Included)` : undefined;
+          }).filter((name): name is string => Boolean(name));
+
+          return [...paidAddons, ...includedAddons];
+        }),
         pickupDrop,
       });
 
@@ -253,17 +368,17 @@ export default function BookingPage() {
 
       setCustomerName("");
       setPhoneNumber("");
-      setVehicleType("");
-      setSelectedServiceId("");
-      setAddons([]);
+      setVehiclesCount(1);
+      setVehicleDetails([{ vehicleType: "", serviceId: "", addons: [] }]);
       setPickupDrop(false);
       setBookingDate("");
       setBookingTime("");
       setPromoCode("");
-      setVehiclesCount(1);
     } catch (error) {
       console.log(error);
       alert("Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -314,21 +429,6 @@ export default function BookingPage() {
           </div>
 
           <select
-            value={vehicleType}
-            onChange={(e) =>
-              setVehicleType(e.target.value)
-            }
-            className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
-          >
-            <option value="">Select Vehicle Type</option>
-            <option value="bike">Bike</option>
-            <option value="hatchback">Hatchback</option>
-            <option value="sedan">Sedan</option>
-            <option value="suv">SUV</option>
-            <option value="muv">MUV</option>
-          </select>
-
-          <select
             value={vehiclesCount}
             onChange={(e) =>
               setVehiclesCount(parseInt(e.target.value))
@@ -341,103 +441,90 @@ export default function BookingPage() {
             <option value={4}>4 Vehicles</option>
           </select>
 
-          <select
-            value={selectedServiceId}
-            onChange={(e) => {
-              setSelectedServiceId(e.target.value);
-              setAddons([]);
-            }}
-            className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
-          >
-
-            <option value="">
-              Select Service
-            </option>
-
-            {washServices.map((service) => (
-              <option
-                key={service.id}
-                value={service.id}
-              >
-                {service.name} - Rs. {service.price}
-              </option>
-            ))}
-
-            <optgroup label="Detailing">
-              {detailServices.map((service) => (
-                <option
-                  key={service.id}
-                  value={service.id}
-                >
-                  {service.name} - Rs. {service.price}
-                </option>
-              ))}
-            </optgroup>
-
-          </select>
-
-          <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-700">
-
-            <h2 className="text-2xl font-bold mb-4">
-              Add-ons
-            </h2>
-
-            <div className="space-y-4">
-
-              {availableAddons.map((addon) => {
-
-                // Optional: we can implement included addons dynamically later.
-                // For now, they are just generic selectable addons.
-                const included = false;
-
-                return (
-
-                  <label
-                    key={addon.id}
-                    className="flex items-center justify-between"
-                  >
-
-                    <div className="flex items-center gap-3">
-
-                      <input
-                        type="checkbox"
-                        checked={
-                          included || addons.includes(addon.id)
-                        }
-                        disabled={included}
-                        onChange={() =>
-                          handleAddonChange(addon.id)
-                        }
-                      />
-
-                      <div>
-
-                        <span>
-                          {addon.name}
-                        </span>
-
-                        {included && (
-                          <span className="text-green-400 text-sm ml-2">
-                            Included
-                          </span>
-                        )}
-
-                      </div>
-
-                    </div>
-
-                    <span>
-                      ₹{addon.price}
-                    </span>
-
-                  </label>
-
-                );
-              })}
-
+          {loadingOptions && (
+            <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4 text-gray-300">
+              Loading services...
             </div>
+          )}
 
-          </div>
+          {optionsError && (
+            <div className="rounded-xl border border-red-500/60 bg-red-950/40 p-4 text-red-100">
+              {optionsError}
+            </div>
+          )}
+          
+          {vehicleDetails.map((detail, index) => (
+            <div key={index} className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-900/50">
+              <h2 className="font-bold text-lg text-red-500">Vehicle {index + 1}</h2>
+              <select
+                value={detail.vehicleType}
+                onChange={(e) =>
+                  handleDetailChange(index, 'vehicleType', e.target.value)
+                }
+                className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
+              >
+                <option value="">Select Vehicle Type</option>
+                <option value="bike">Bike</option>
+                <option value="hatchback">Hatchback</option>
+                <option value="sedan">Sedan</option>
+                <option value="suv">SUV</option>
+                <option value="muv">MUV</option>
+              </select>
+
+              <select
+                value={detail.serviceId}
+                onChange={(e) => {
+                  handleDetailChange(index, 'serviceId', e.target.value);
+                }}
+                disabled={!detail.vehicleType || loadingOptions || Boolean(optionsError)}
+                className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
+              >
+                <option value="">{detail.vehicleType ? "Select Service" : "Select vehicle type first"}</option>
+                {washServices.filter((service) => isServiceAvailableForVehicle(service, detail.vehicleType)).map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {getServiceOptionLabel(service, detail.vehicleType)}
+                  </option>
+                ))}
+                <optgroup label="Detailing">
+                  {detailServices.filter((service) => isServiceAvailableForVehicle(service, detail.vehicleType)).map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {getServiceOptionLabel(service, detail.vehicleType)}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+
+              <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-700">
+                <h3 className="text-xl font-bold mb-4">Add-ons</h3>
+                <div className="space-y-4">
+                  {availableAddons.map((addon) => {
+                    const included = isAddonIncluded(detail, addon.id);
+
+                    return (
+                      <label key={addon.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={detail.addons.includes(addon.id) || included}
+                            disabled={included}
+                            onChange={() => handleAddonChange(index, addon.id)}
+                            className="accent-red-600 disabled:opacity-70"
+                          />
+                          <span className={included ? "text-gray-400" : ""}>
+                            {addon.name}
+                            {included && (
+                              <span className="ml-2 text-xs font-bold text-green-400">Included</span>
+                            )}
+                          </span>
+                        </div>
+                        <span>{included ? "Included" : `Rs. ${addon.price}`}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ))}
 
           <label className="flex items-center justify-between bg-zinc-900 p-4 rounded-xl border border-zinc-700">
 
@@ -458,18 +545,20 @@ export default function BookingPage() {
             </div>
 
             <span>
-              ₹100
+              Rs. 100
             </span>
 
           </label>
 
-          <input
-            type="text"
-            placeholder="Got a Promo Code? Enter it here"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value)}
-            className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700 uppercase"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Got a Promo Code? Enter it here"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700 uppercase"
+            />
+          </div>
 
           <input
             type="date"
@@ -494,20 +583,20 @@ export default function BookingPage() {
 
             <div className="flex justify-between text-lg">
               <span>Subtotal:</span>
-              <span>₹{calculateTotal().subtotal}</span>
+              <span>Rs. {totals.subtotal}</span>
             </div>
             
-            {calculateTotal().discount > 0 && (
+            {totals.discount > 0 && (
               <div className="flex justify-between text-lg font-bold text-yellow-300">
-                <span>Discount {calculateTotal().offerTitle ? `(${calculateTotal().offerTitle})` : ""}:</span>
-                <span>-₹{calculateTotal().discount}</span>
+                <span>Discount {totals.offerTitle ? `(${totals.offerTitle})` : ""}:</span>
+                <span>-Rs. {totals.discount}</span>
               </div>
             )}
 
             <div className="border-t border-red-400 pt-2 mt-2">
               <h2 className="text-3xl font-bold flex justify-between">
                 <span>Total:</span>
-                <span>₹{calculateTotal().total}</span>
+                <span>Rs. {totals.total}</span>
               </h2>
             </div>
 
@@ -515,9 +604,10 @@ export default function BookingPage() {
 
           <button
             type="submit"
-            className="w-full bg-red-600 hover:bg-red-700 transition-all p-5 rounded-xl text-xl font-bold"
+            disabled={isSubmitting || loadingOptions || Boolean(optionsError)}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-zinc-700 transition-all p-5 rounded-xl text-xl font-bold"
           >
-            Confirm Booking
+            {isSubmitting ? "Submitting..." : "Confirm Booking"}
           </button>
 
         </form>

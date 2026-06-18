@@ -2,15 +2,34 @@
 
 import { useEffect, useState } from "react";
 
+interface Employee {
+  id: string;
+  employeeCode: string;
+  name: string;
+  joiningDate: string;
+  salaryPerDay: number;
+  phoneNumber: string;
+  role: string;
+  revenueGenerated: number;
+  jobsCompleted: number;
+  status: string;
+}
+
+type EmployeeEditData = Partial<Employee>;
+
+interface EmployeesResponse {
+  employees?: Employee[];
+}
+
 export default function EmployeePage() {
 
   const currentUserRole = "admin";
 
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [editingId, setEditingId] = useState("");
 
-  const [editData, setEditData] = useState<any>({});
+  const [editData, setEditData] = useState<EmployeeEditData>({});
 
   const [employeeCode, setEmployeeCode] = useState(generateEmployeeCode());
   const [name, setName] = useState("");
@@ -29,9 +48,9 @@ export default function EmployeePage() {
 
     const response = await fetch("/api/employees");
 
-    const data = await response.json();
+    const data = await response.json() as EmployeesResponse;
 
-    setEmployees(data.employees);
+    setEmployees(data.employees || []);
   };
 
   useEffect(() => {
@@ -227,7 +246,7 @@ export default function EmployeePage() {
 
           <tbody>
 
-            {employees.map((employee: any) => (
+            {employees.map((employee) => (
 
               <tr
                 key={employee.id}

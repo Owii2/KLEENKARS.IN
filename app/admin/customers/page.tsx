@@ -68,7 +68,7 @@ export default function CustomerPage() {
       } else {
         alert(data.message || "Update failed");
       }
-    } catch (e) {
+    } catch {
       alert("Error updating customer");
     }
   };

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -51,7 +51,7 @@ export default function EmployeeAttendancePage({
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const searchParams = useSearchParams();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -81,7 +81,7 @@ export default function EmployeeAttendancePage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.employeeId]);
 
   useEffect(() => {
     const yearParam = searchParams?.get("year");
@@ -92,7 +92,7 @@ export default function EmployeeAttendancePage({
       }
     }
     fetchData();
-  }, [params.employeeId, searchParams]);
+  }, [fetchData, searchParams]);
 
   const employeeAttendance = attendance.filter((item) => item.employeeId === params.employeeId);
 

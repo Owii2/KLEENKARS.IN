@@ -2,6 +2,17 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { requireRoles } from "@/lib/apiAuth";
+import type { Prisma } from "@prisma/client";
+
+interface CustomerUpdateRequest {
+  customerName?: string;
+  phoneNumber?: string;
+  email?: string | null;
+  vehicleType?: string | null;
+  isBlacklisted?: boolean;
+  tag?: string | null;
+  password?: string;
+}
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(["admin", "manager"]);
@@ -9,9 +20,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await req.json() as CustomerUpdateRequest;
 
-    const dataToUpdate: any = {};
+    const dataToUpdate: Prisma.CustomerUpdateInput = {};
 
     if (body.customerName !== undefined) dataToUpdate.customerName = body.customerName;
     if (body.phoneNumber !== undefined) dataToUpdate.phoneNumber = body.phoneNumber;

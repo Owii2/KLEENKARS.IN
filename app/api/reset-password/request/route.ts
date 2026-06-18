@@ -2,10 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
+import twilio from "twilio";
+
+interface ResetPasswordRequestBody {
+  identifier?: string;
+  method?: "email" | "mobile";
+}
 
 export async function POST(req: Request) {
   try {
-    const { identifier, method } = await req.json();
+    const { identifier, method } = await req.json() as ResetPasswordRequestBody;
 
     if (!identifier) {
       return NextResponse.json({ success: false, message: "Missing identifier" }, { status: 400 });
@@ -57,8 +63,7 @@ export async function POST(req: Request) {
     // Also send via Twilio if configured
     if ((method === "mobile" || !method) && employee.phoneNumber && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) {
       try {
-        const Twilio = require('twilio');
-        const client = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.messages.create({
           body: `Your reset code is ${code}`,
           from: process.env.TWILIO_FROM,

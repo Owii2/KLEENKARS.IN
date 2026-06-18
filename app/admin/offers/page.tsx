@@ -291,6 +291,7 @@ export default function OffersPage() {
               <div>
                 <label className="text-sm font-bold block mb-2">Upload Offer Poster (Shows in Homepage Pop-up)</label>
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full bg-black border border-zinc-700 p-3 rounded" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {form.imageUrl && <img src={form.imageUrl} alt="Offer Preview" className="mt-2 h-32 rounded object-contain bg-black" />}
               </div>
 

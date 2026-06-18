@@ -147,7 +147,7 @@ export default function AttendancePage() {
       setSuccessMessage("Attendance record deleted.");
       setTimeout(() => setSuccessMessage(""), 3000);
       fetchData();
-    } catch (err) {
+    } catch {
       setError("Failed to delete attendance record");
     }
   };

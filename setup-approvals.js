@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs');
 let schema = fs.readFileSync('prisma/schema.prisma', 'utf8');
 

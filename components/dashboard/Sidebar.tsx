@@ -17,7 +17,6 @@ export default function Sidebar() {
       {/* LOGO */}
       <div className="mb-8 border-b border-white/10 pb-6">
         <Logo width={140} height={42} className="max-w-full" />
-        <p className="text-xs text-gray-400 mt-3">Premium Car Wash & Detailing Studio</p>
       </div>
 
       <nav className="space-y-3 flex-1 overflow-y-auto">
