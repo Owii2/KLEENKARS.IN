@@ -11,7 +11,7 @@ export async function GET() {
 
   try {
     // Attempt a basic test query to Gemini v1beta API to verify status
-    const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const response = await fetch(testUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
