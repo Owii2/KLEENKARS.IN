@@ -196,13 +196,12 @@ _If you need help selecting the right package for your vehicle, feel free to ask
     for (const baseName of sortedBases) {
       const group = grouped[baseName];
       const formattedPrice = formatGroupPrices(group.prices);
-      const descriptionStr = group.description ? `\n  * *${group.description}*` : "";
       
-      const itemStr = `* **${baseName}**${descriptionStr}\n  * 💰 **Pricing:** ${formattedPrice}`;
+      const itemStr = `* **${baseName}**: ${formattedPrice}`;
       
       const nameLower = baseName.toLowerCase();
       if (group.isAddon) {
-        addons.push(`* **${baseName}**: ${formattedPrice}${group.description ? ` (${group.description})` : ""}`);
+        addons.push(`* **${baseName}**: ${formattedPrice}`);
       } else if (nameLower.includes("cabin revive") || nameLower.includes("paint restoration") || nameLower.includes("detailing") || nameLower.includes("coating")) {
         detailingPackages.push(itemStr);
       } else {
