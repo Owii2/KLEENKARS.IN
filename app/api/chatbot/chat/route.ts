@@ -83,6 +83,26 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
     groupedServices[grp].push(s);
   }
 
+  // Generate complete list of services response
+  const getServicesListResponse = () => {
+    if (services.length > 0) {
+      const minPrice = Math.min(...services.map(s => s.price));
+      let response = `Our professional car wash services start at just **₹${minPrice}**. Here is our complete price list by category:\n\n`;
+      
+      for (const [groupName, groupServices] of Object.entries(groupedServices)) {
+        response += `**${groupName}**:\n`;
+        for (const s of groupServices) {
+          response += `- ${s.name}: ₹${s.price}\n`;
+        }
+        response += "\n";
+      }
+      
+      response += "You can book any of these packages directly online! If you need help choosing, please call us at 8650007661.";
+      return response;
+    }
+    return "Our services start at just ₹49 for bikes and ₹149 for standard car washes. You can view all detailing packages and book directly via the 'Book Now' page on our homepage!";
+  };
+
   // Keywords mapping for service groups to assist token-based lookups
   const groupKeywords: Record<string, string[]> = {
     "Express Wash": ["express", "quick wash", "basic wash"],
@@ -135,7 +155,23 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
     }
   }
 
-  // 2. Smart FAQ Matching (with enhanced word stemming/substring checking)
+  // 1b. General Services / Packages List Check
+  const generalServicePhrases = [
+    "what service", "what services", "services do you", "service do you",
+    "services you provide", "services you offer", "list of services",
+    "services list", "our services", "your services", "what washes",
+    "types of wash", "types of services", "show services", "all services",
+    "available services", "what do you do", "what packages", "what options",
+    "wash packages", "wash options", "detailing packages", "which service",
+    "which services", "provide services", "provide service", "offer services",
+    "offer service", "services page", "wash menu", "what wash do you have"
+  ];
+
+  if (generalServicePhrases.some(phrase => messageLower.includes(phrase))) {
+    return getServicesListResponse();
+  }
+
+  // 2. Smart FAQ Matching (with Cosine Similarity and token overlap checking)
   const stopWords = new Set(["what", "is", "the", "of", "for", "to", "a", "in", "about", "how", "can", "do", "you", "our", "my", "your", "are", "we", "do", "does", "any"]);
   let bestMatch = null;
   let maxScore = 0;
@@ -160,9 +196,10 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
       }
     }
 
-    if (qWords.length > 0) {
-      const score = matchedWords / qWords.length;
-      if (score > maxScore && score >= 0.4) { // require at least 40% matching words
+    if (qWords.length > 0 && mWords.length > 0) {
+      // Use Cosine Similarity to prevent short questions from dominating long user inputs
+      const score = matchedWords / Math.sqrt(qWords.length * mWords.length);
+      if (score > maxScore && score >= 0.45) { // require at least 45% similarity
         maxScore = score;
         bestMatch = entry;
       }
@@ -195,7 +232,7 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
     }
   }
 
-  // 4. General Pricing / Packages / Complete List Request
+  // 4. General Pricing / Packages / Complete List Request (using helper)
   if (
     messageLower.includes("price") ||
     messageLower.includes("pricing") ||
@@ -206,22 +243,7 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
     messageLower.includes("list") ||
     messageLower.includes("how much")
   ) {
-    if (services.length > 0) {
-      const minPrice = Math.min(...services.map(s => s.price));
-      let response = `Our professional car wash services start at just **₹${minPrice}**. Here is our complete price list by category:\n\n`;
-      
-      for (const [groupName, groupServices] of Object.entries(groupedServices)) {
-        response += `**${groupName}**:\n`;
-        for (const s of groupServices) {
-          response += `- ${s.name}: ₹${s.price}\n`;
-        }
-        response += "\n";
-      }
-      
-      response += "You can book any of these packages directly online! If you need help choosing, please call us at 8650007661.";
-      return response;
-    }
-    return "Our services start at just ₹49 for bikes and ₹149 for standard car washes. You can view all detailing packages and book directly via the 'Book Now' page on our homepage!";
+    return getServicesListResponse();
   }
 
   // 5. Fallback Keyword rules
