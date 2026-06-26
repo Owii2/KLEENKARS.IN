@@ -17,6 +17,16 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Forecasting state
+  const [activeTab, setActiveTab] = useState<"registry" | "forecasting">("registry");
+  const [forecasts, setForecasts] = useState<any[]>([]);
+  const [forecastMeta, setForecastMeta] = useState<any>({
+    totalBookings: 0,
+    pastBaselineBookings: 0,
+    futureScheduledBookings: 0
+  });
+  const [forecastLoading, setForecastLoading] = useState(false);
+
   // Edit/Add modals state
   const [showForm, setShowForm] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -39,9 +49,33 @@ export default function InventoryPage() {
     }
   };
 
+  const fetchForecasts = async () => {
+    try {
+      setForecastLoading(true);
+      const res = await fetch("/api/admin/inventory/forecast");
+      const data = await res.json();
+      if (data.success) {
+        setForecasts(data.forecasts || []);
+        setForecastMeta(data.meta || {
+          totalBookings: 0,
+          pastBaselineBookings: 0,
+          futureScheduledBookings: 0
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setForecastLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchInventory();
-  }, []);
+    if (activeTab === "forecasting") {
+      fetchForecasts();
+    } else {
+      fetchInventory();
+    }
+  }, [activeTab]);
 
   const handleEditClick = (item: InventoryItem) => {
     setSelectedItem(item);
@@ -70,7 +104,11 @@ export default function InventoryPage() {
       const res = await fetch(`/api/inventory/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (res.ok && data.success) {
-        fetchInventory();
+        if (activeTab === "forecasting") {
+          fetchForecasts();
+        } else {
+          fetchInventory();
+        }
       } else {
         alert(data.message || "Failed to delete item");
       }
@@ -107,7 +145,11 @@ export default function InventoryPage() {
       if (res.ok && data.success) {
         alert(selectedItem ? "Item updated successfully!" : "Product added successfully!");
         setShowForm(false);
-        fetchInventory();
+        if (activeTab === "forecasting") {
+          fetchForecasts();
+        } else {
+          fetchInventory();
+        }
       } else {
         alert(data.message || "Operation failed.");
       }
@@ -139,90 +181,232 @@ export default function InventoryPage() {
         </button>
       </div>
 
-      {/* Grid of Stock list */}
-      <div className="bg-[#0b0b0b] rounded-xl border border-gray-800 overflow-hidden">
-        {loading ? (
-          <div className="py-20 text-center text-gray-500">
-            Fetching product catalog...
-          </div>
-        ) : items.length === 0 ? (
-          <div className="py-16 text-center text-gray-500 text-sm">
-            No inventory items registered yet. Click "Add Product" to create one.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-[#141414] text-gray-400 font-semibold uppercase tracking-wider text-xs border-b border-gray-800">
-                <tr>
-                  <th className="px-6 py-4">Item Name</th>
-                  <th className="px-6 py-4">Stock Level</th>
-                  <th className="px-6 py-4">Unit</th>
-                  <th className="px-6 py-4">Threshold Alert</th>
-                  <th className="px-6 py-4">Cost/Unit</th>
-                  <th className="px-6 py-4">Total Asset Value</th>
-                  <th className="px-6 py-4">Last Updated</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-850">
-                {items.map((item) => {
-                  const isLow = item.quantity < item.minStock;
-
-                  return (
-                    <tr key={item.id} className="hover:bg-[#121212]/40 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-white">
-                        {item.name}
-                      </td>
-                      <td className="px-6 py-4 font-mono font-bold">
-                        <span className={isLow ? "text-red-400" : "text-white"}>
-                          {item.quantity}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-400">
-                        {item.unit}
-                      </td>
-                      <td className="px-6 py-4">
-                        {isLow ? (
-                          <span className="bg-red-950/40 text-red-400 border border-red-800/40 text-xs px-2.5 py-1 rounded-full font-bold">
-                            ⚠️ REORDER REQ (Min: {item.minStock})
-                          </span>
-                        ) : (
-                          <span className="bg-green-955/40 text-green-400 border border-green-800/40 text-xs px-2.5 py-1 rounded-full font-bold">
-                            Stable (Min: {item.minStock})
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-gray-300 font-mono">
-                        ₹{item.costPerUnit}
-                      </td>
-                      <td className="px-6 py-4 text-green-400 font-bold font-mono">
-                        ₹{(item.quantity * item.costPerUnit).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 text-gray-500 text-xs">
-                        {new Date(item.updatedAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <button
-                          onClick={() => handleEditClick(item)}
-                          className="text-blue-400 hover:text-blue-300 font-semibold text-xs bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-md transition"
-                        >
-                          Adjust
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="text-red-500 hover:text-red-400 font-semibold text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-md transition"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* Tab Switcher */}
+      <div className="flex border-b border-gray-800 mb-6 gap-2">
+        <button
+          onClick={() => setActiveTab("registry")}
+          className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer ${
+            activeTab === "registry"
+              ? "border-red-500 text-white"
+              : "border-transparent text-gray-400 hover:text-white"
+          }`}
+        >
+          📁 Stock Registry
+        </button>
+        <button
+          onClick={() => setActiveTab("forecasting")}
+          className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer ${
+            activeTab === "forecasting"
+              ? "border-red-500 text-white"
+              : "border-transparent text-gray-400 hover:text-white"
+          }`}
+        >
+          📈 Supply Chain Forecasting
+        </button>
       </div>
+
+      {activeTab === "forecasting" ? (
+        <div className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-800">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Items Monitored</span>
+              <span className="text-3xl font-extrabold text-white mt-1 block">{forecasts.length}</span>
+            </div>
+            
+            <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-800">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Critical Depletion (3 Days)</span>
+              <span className={`text-3xl font-extrabold mt-1 block ${
+                forecasts.filter(f => f.status === "CRITICAL").length > 0 ? "text-red-500" : "text-white"
+              }`}>
+                {forecasts.filter(f => f.status === "CRITICAL").length}
+              </span>
+            </div>
+            
+            <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-800">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Low Stock Warnings</span>
+              <span className={`text-3xl font-extrabold mt-1 block ${
+                forecasts.filter(f => f.status === "WARNING").length > 0 ? "text-amber-500" : "text-white"
+              }`}>
+                {forecasts.filter(f => f.status === "WARNING").length}
+              </span>
+            </div>
+            
+            <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-800">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Scheduled Bookings (14d)</span>
+              <span className="text-3xl font-extrabold text-green-400 mt-1 block">
+                {forecastMeta.futureScheduledBookings}
+              </span>
+            </div>
+          </div>
+
+          {/* Forecasting Table */}
+          <div className="bg-[#0b0b0b] rounded-xl border border-gray-800 overflow-hidden">
+            {forecastLoading ? (
+              <div className="py-20 text-center text-gray-500">
+                Generating run-out estimates...
+              </div>
+            ) : forecasts.length === 0 ? (
+              <div className="py-16 text-center text-gray-500 text-sm">
+                No forecasts available. Add inventory items and bookings to calculate forecasts.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-[#141414] text-gray-400 font-semibold uppercase tracking-wider text-xs border-b border-gray-800">
+                    <tr>
+                      <th className="px-6 py-4">Item Name</th>
+                      <th className="px-6 py-4">Current Stock</th>
+                      <th className="px-6 py-4">Daily Usage Rate</th>
+                      <th className="px-6 py-4">Est. Days Left</th>
+                      <th className="px-6 py-4">Reorder Date</th>
+                      <th className="px-6 py-4">Supply Health</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-850">
+                    {forecasts.map((item) => {
+                      const daysLeft = item.daysLeft;
+                      const isInf = daysLeft === "Infinity" || daysLeft === Infinity;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-[#121212]/40 transition-colors">
+                          <td className="px-6 py-4 font-semibold text-white">
+                            {item.name}
+                          </td>
+                          <td className="px-6 py-4 font-mono font-bold text-white">
+                            {item.quantity} {item.unit}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-gray-300">
+                            {item.dailyUsageRate} {item.unit}/day
+                          </td>
+                          <td className={`px-6 py-4 font-mono font-bold ${
+                            item.status === "CRITICAL" ? "text-red-400" :
+                            item.status === "WARNING" ? "text-amber-400" : "text-green-400"
+                          }`}>
+                            {isInf ? "Stable (No usage)" : `${daysLeft} days`}
+                          </td>
+                          <td className="px-6 py-4 font-mono text-gray-300">
+                            {item.suggestedReorderDate}
+                          </td>
+                          <td className="px-6 py-4">
+                            {item.status === "CRITICAL" ? (
+                              <span className="bg-red-955/40 text-red-400 border border-red-800/40 text-xs px-2.5 py-1 rounded-full font-bold uppercase">
+                                🚨 CRITICAL RUN-OUT
+                              </span>
+                            ) : item.status === "WARNING" ? (
+                              <span className="bg-amber-955/40 text-amber-400 border border-amber-800/40 text-xs px-2.5 py-1 rounded-full font-bold uppercase">
+                                ⚠️ REORDER SUGGESTED
+                              </span>
+                            ) : (
+                              <span className="bg-green-955/40 text-green-400 border border-green-800/40 text-xs px-2.5 py-1 rounded-full font-bold uppercase">
+                                ✅ Healthy Stock
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleEditClick(item)}
+                              className="text-red-500 hover:text-red-400 font-semibold text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-md transition"
+                            >
+                              Restock Product
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Grid of Stock list */
+        <div className="bg-[#0b0b0b] rounded-xl border border-gray-800 overflow-hidden">
+          {loading ? (
+            <div className="py-20 text-center text-gray-500">
+              Fetching product catalog...
+            </div>
+          ) : items.length === 0 ? (
+            <div className="py-16 text-center text-gray-500 text-sm">
+              No inventory items registered yet. Click "Add Product" to create one.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-[#141414] text-gray-400 font-semibold uppercase tracking-wider text-xs border-b border-gray-800">
+                  <tr>
+                    <th className="px-6 py-4">Item Name</th>
+                    <th className="px-6 py-4">Stock Level</th>
+                    <th className="px-6 py-4">Unit</th>
+                    <th className="px-6 py-4">Threshold Alert</th>
+                    <th className="px-6 py-4">Cost/Unit</th>
+                    <th className="px-6 py-4">Total Asset Value</th>
+                    <th className="px-6 py-4">Last Updated</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-850">
+                  {items.map((item) => {
+                    const isLow = item.quantity < item.minStock;
+
+                    return (
+                      <tr key={item.id} className="hover:bg-[#121212]/40 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-white">
+                          {item.name}
+                        </td>
+                        <td className="px-6 py-4 font-mono font-bold">
+                          <span className={isLow ? "text-red-400" : "text-white"}>
+                            {item.quantity}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-400">
+                          {item.unit}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isLow ? (
+                            <span className="bg-red-955/40 text-red-400 border border-red-800/40 text-xs px-2.5 py-1 rounded-full font-bold">
+                              ⚠️ REORDER REQ (Min: {item.minStock})
+                            </span>
+                          ) : (
+                            <span className="bg-green-955/40 text-green-400 border border-green-800/40 text-xs px-2.5 py-1 rounded-full font-bold">
+                              Stable (Min: {item.minStock})
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-gray-300 font-mono">
+                          ₹{item.costPerUnit}
+                        </td>
+                        <td className="px-6 py-4 text-green-400 font-bold font-mono">
+                          ₹{(item.quantity * item.costPerUnit).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 text-xs">
+                          {new Date(item.updatedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-right space-x-2">
+                          <button
+                            onClick={() => handleEditClick(item)}
+                            className="text-blue-400 hover:text-blue-300 font-semibold text-xs bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-md transition"
+                          >
+                            Adjust
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="text-red-500 hover:text-red-400 font-semibold text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-md transition"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add / Edit Form Modal */}
       {showForm && (
