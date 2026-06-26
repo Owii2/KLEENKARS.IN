@@ -72,3 +72,41 @@ export function verifyToken(token: string): AuthUser | null {
   }
 
 }
+
+export function sanitizeIdentifier(identifier: string): string {
+  if (!identifier) return "";
+  const trimmed = identifier.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  // If it's a phone-like string (only contains +, digits, spaces, parentheses, dashes) and has at least 10 digits, get the last 10 digits.
+  if (digits.length >= 10 && /^[+\d\s()-]+$/.test(trimmed)) {
+    return digits.slice(-10);
+  }
+  return trimmed;
+}
+
+export async function generateNextCustomerId(): Promise<string> {
+  const customers = await prisma.customer.findMany({
+    where: {
+      id: {
+        startsWith: "KKSC"
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+
+  let maxNum = 0;
+  for (const c of customers) {
+    const match = c.id.match(/^KKSC(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  return `KKSC${String(nextNum).padStart(3, '0')}`;
+}

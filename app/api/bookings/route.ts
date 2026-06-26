@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { calculateCustomerCategories } from "@/lib/customerCategories";
 import { requireRoles } from "@/lib/apiAuth";
+import { generateNextCustomerId } from "@/lib/auth";
 import {
   calculateServerBookingTotal,
   getIncludedAddonIds,
@@ -150,8 +151,10 @@ export async function POST(req: Request) {
 
     let customer = await prisma.customer.findUnique({ where: { phoneNumber } });
     if (!customer) {
+      const nextId = await generateNextCustomerId();
       customer = await prisma.customer.create({
         data: {
+          id: nextId,
           customerName,
           phoneNumber,
         },
@@ -197,6 +200,22 @@ export async function POST(req: Request) {
       },
     });
 
+    const parseJsonArray = (val: unknown): any[] => {
+      if (!val) return [];
+      try {
+        const parsed = typeof val === "string" ? JSON.parse(val) : val;
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const visitHistory = parseJsonArray(customer.visitHistory);
+    visitHistory.push(new Date().toISOString());
+
+    const spendingHistory = parseJsonArray(customer.spendingHistory);
+    spendingHistory.push({ date: new Date().toISOString(), amount: pricing.total });
+
     await prisma.customer.update({
       where: { id: customer.id },
       data: {
@@ -204,12 +223,8 @@ export async function POST(req: Request) {
         totalVisits: { increment: 1 },
         totalSpent: { increment: pricing.total },
         lastVisit: new Date(),
-        visitHistory: {
-          push: new Date().toISOString(),
-        },
-        spendingHistory: {
-          push: { date: new Date().toISOString(), amount: pricing.total },
-        },
+        visitHistory: visitHistory as any,
+        spendingHistory: spendingHistory as any,
       },
     });
 

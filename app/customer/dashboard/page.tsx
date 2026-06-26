@@ -27,15 +27,57 @@ export default function CustomerDashboard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("customerUser");
-    const u = stored ? JSON.parse(stored) as CustomerUser : null;
+    const u = stored ? (JSON.parse(stored) as CustomerUser) : null;
     setUser(u);
+
+    // Initial local cache load
     if (u) {
       const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
       setBookings(all.filter((b) => b.phone === u.phone));
       const m = window.localStorage.getItem(`membership_${u.phone}`);
-      setMembership(m ? JSON.parse(m) as LocalMembership : null);
+      setMembership(m ? (JSON.parse(m) as LocalMembership) : null);
       setReferralPoints(Number(window.localStorage.getItem(`referral_points_${u.phone}`) || 0));
     }
+
+    // Real-time backend fetch
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.customer) {
+          const c = data.customer;
+          setUser({ name: c.customerName, phone: c.phone, email: c.email });
+          setReferralPoints(c.referralPoints || 0);
+
+          if (c.bookings) {
+            const mappedBookings = c.bookings.map((b: any) => ({
+              id: b.id,
+              phone: b.phoneNumber,
+              amount: b.totalCost,
+              date: b.bookingDate,
+              time: b.bookingTime,
+              status: b.status,
+              service: b.serviceType || "Wash",
+            }));
+            setBookings(mappedBookings);
+
+            const allLocal = JSON.parse(window.localStorage.getItem("bookings") || "[]") as any[];
+            const otherLocal = allLocal.filter((b) => b.phone !== c.phone);
+            window.localStorage.setItem("bookings", JSON.stringify([...otherLocal, ...mappedBookings]));
+          }
+
+          if (c.memberships && c.memberships.length > 0) {
+            const latestMembership = c.memberships[0];
+            setMembership({ planName: latestMembership.planName });
+            window.localStorage.setItem(`membership_${c.phone}`, JSON.stringify(latestMembership));
+          } else {
+            setMembership(null);
+            window.localStorage.removeItem(`membership_${c.phone}`);
+          }
+          window.localStorage.setItem(`referral_points_${c.phone}`, String(c.referralPoints || 0));
+          window.localStorage.setItem("customerUser", JSON.stringify({ name: c.customerName, phone: c.phone, email: c.email }));
+        }
+      })
+      .catch(console.error);
   }, []);
 
   const points = useMemo(() => bookings.reduce((sum, b) => sum + Math.floor((b.amount || 0) / 100), 0), [bookings]);

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
 import twilio from "twilio";
+import { sanitizeIdentifier } from "@/lib/auth";
 
 interface LoginOtpRequestBody {
   identifier?: string;
@@ -11,11 +12,13 @@ interface LoginOtpRequestBody {
 
 export async function POST(req: Request) {
   try {
-    const { identifier, method } = await req.json() as LoginOtpRequestBody;
+    const { identifier: rawIdentifier, method } = await req.json() as LoginOtpRequestBody;
 
-    if (!identifier) {
+    if (!rawIdentifier) {
       return NextResponse.json({ success: false, message: "Missing identifier" }, { status: 400 });
     }
+
+    const identifier = sanitizeIdentifier(rawIdentifier);
 
     const employee = await prisma.employee.findFirst({
       where: {

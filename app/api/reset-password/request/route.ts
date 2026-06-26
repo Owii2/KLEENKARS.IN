@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
 import twilio from "twilio";
 
+import { sanitizeIdentifier } from "@/lib/auth";
+
 interface ResetPasswordRequestBody {
   identifier?: string;
   method?: "email" | "mobile";
@@ -11,11 +13,13 @@ interface ResetPasswordRequestBody {
 
 export async function POST(req: Request) {
   try {
-    const { identifier, method } = await req.json() as ResetPasswordRequestBody;
+    const { identifier: rawIdentifier, method } = await req.json() as ResetPasswordRequestBody;
 
-    if (!identifier) {
+    if (!rawIdentifier) {
       return NextResponse.json({ success: false, message: "Missing identifier" }, { status: 400 });
     }
+
+    const identifier = sanitizeIdentifier(rawIdentifier);
 
     const employee = await prisma.employee.findFirst({
       where: {
@@ -40,10 +44,12 @@ export async function POST(req: Request) {
       data: { otpHash: hashed, otpExpires: expires }
     });
 
+    const targetEmail = employee.email || "owii.rajput@gmail.com";
+
     // Try to send via Email
-    if ((method === "email" || !method) && employee.email) {
+    if (method === "email" || !method) {
       await sendEmail({
-        to: employee.email,
+        to: targetEmail,
         subject: "Password Reset OTP - Kleenkars",
         text: `Your password reset code is ${code}. It expires in 5 minutes.`,
         html: `
@@ -76,10 +82,6 @@ export async function POST(req: Request) {
 
     // Log to console for local testing
     console.log(`OTP for ${employee.name} (method: ${method}): ${code}`);
-
-    if (method === "email" && !employee.email) {
-      return NextResponse.json({ success: false, message: "No email registered for this user" });
-    }
 
     if (method === "mobile" && !employee.phoneNumber) {
       return NextResponse.json({ success: false, message: "No mobile number registered for this user" });

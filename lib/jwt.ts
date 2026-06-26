@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import type { SignOptions } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'please-set-JWT_SECRET';
+const JWT_SECRET = process.env.JWT_SECRET || 'kleenkars_secret';
 
 export function signToken(payload: object, expiresIn: SignOptions["expiresIn"] = '7d') {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });

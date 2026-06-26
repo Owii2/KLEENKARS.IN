@@ -469,30 +469,39 @@ export default function BookingPage() {
                 <option value="sedan">Sedan</option>
                 <option value="suv">SUV</option>
                 <option value="muv">MUV</option>
+                <option value="truck">Truck</option>
+                <option value="van">Van</option>
+                <option value="traveller">Traveller</option>
+                <option value="bus">Bus</option>
+                <option value="e-rickshaw">E-Rickshaw</option>
+                <option value="tractor">Tractor</option>
+                <option value="others">Others</option>
               </select>
 
-              <select
-                value={detail.serviceId}
-                onChange={(e) => {
-                  handleDetailChange(index, 'serviceId', e.target.value);
-                }}
-                disabled={!detail.vehicleType || loadingOptions || Boolean(optionsError)}
-                className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
-              >
-                <option value="">{detail.vehicleType ? "Select Service" : "Select vehicle type first"}</option>
-                {washServices.filter((service) => isServiceAvailableForVehicle(service, detail.vehicleType)).map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {getServiceOptionLabel(service, detail.vehicleType)}
-                  </option>
-                ))}
-                <optgroup label="Detailing">
-                  {detailServices.filter((service) => isServiceAvailableForVehicle(service, detail.vehicleType)).map((service) => (
+              {detail.vehicleType && (
+                <select
+                  value={detail.serviceId}
+                  onChange={(e) => {
+                    handleDetailChange(index, 'serviceId', e.target.value);
+                  }}
+                  disabled={loadingOptions || Boolean(optionsError)}
+                  className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
+                >
+                  <option value="">Select Service</option>
+                  {washServices.filter((service) => isServiceAvailableForVehicle(service, detail.vehicleType)).map((service) => (
                     <option key={service.id} value={service.id}>
                       {getServiceOptionLabel(service, detail.vehicleType)}
                     </option>
                   ))}
-                </optgroup>
-              </select>
+                  <optgroup label="Detailing">
+                    {detailServices.filter((service) => isServiceAvailableForVehicle(service, detail.vehicleType)).map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {getServiceOptionLabel(service, detail.vehicleType)}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              )}
 
               <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-700">
                 <h3 className="text-xl font-bold mb-4">Add-ons</h3>

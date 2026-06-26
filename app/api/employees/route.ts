@@ -5,7 +5,7 @@ import { requireRoles } from "@/lib/apiAuth";
 
 
 export async function GET() {
-  const auth = await requireRoles(["admin", "manager"]);
+  const auth = await requireRoles(["admin", "manager", "supervisor"]);
 
   if (auth.response) {
     return auth.response;
@@ -41,30 +41,27 @@ export async function POST(req: Request) {
     }
 
     const employee = await prisma.employee.create({
-
       data: {
-
         employeeCode: body.employeeCode,
-
         name: body.name,
-
         phoneNumber: body.phoneNumber,
-
         password: await hashPassword(body.password),
-
         role: body.role,
-
         salaryPerDay: body.salaryPerDay,
-
+        email: body.email && body.email.trim() !== "" ? body.email.trim() : null,
+        aadhaarNumber: body.aadhaarNumber || null,
+        address: body.address || null,
+        emergencyContact: body.emergencyContact || null,
+        branch: body.branch || null,
+        shiftType: body.shiftType || null,
+        notes: body.notes || null,
       },
-
     });
 
     return NextResponse.json({
       success: true,
       employee,
     });
-
   } catch (error) {
 
     console.log(error);

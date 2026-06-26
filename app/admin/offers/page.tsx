@@ -209,7 +209,106 @@ export default function OffersPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-700 p-6 rounded-2xl w-full max-w-2xl my-8">
-            <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit' : 'Create'} Offer</h2>
+            <h2 className="text-xl font-bold mb-4">{editingId ? "Edit" : "Create"} Offer</h2>
+            
+            {/* Quick Templates Selection */}
+            <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl mb-6">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-2">Apply Smart Campaign Template</span>
+              <div className="flex flex-wrap gap-2 animate-fade-in">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({
+                      ...form,
+                      title: "Happy Hour Wash",
+                      description: "Special Tuesday & Wednesday wash discount!",
+                      discountPercent: "15",
+                      discountAmount: "0",
+                      validDays: ["Tuesday", "Wednesday"],
+                      startTime: "11:00",
+                      endTime: "15:00",
+                      minVehicles: "1",
+                      discountSecondVehicleAmount: "0",
+                      code: "HAPPYHOUR",
+                      isActive: true,
+                    });
+                  }}
+                  className="bg-zinc-805 border border-zinc-750 hover:bg-red-600 hover:text-white hover:border-red-600 text-xs px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer text-gray-300 outline-none"
+                >
+                  ⚡ Happy Hour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({
+                      ...form,
+                      title: "VIP Multi-Car Deal",
+                      description: "Book 2 or more cars and get 20% off!",
+                      discountPercent: "20",
+                      discountAmount: "0",
+                      validDays: [],
+                      startTime: "",
+                      endTime: "",
+                      minVehicles: "2",
+                      discountSecondVehicleAmount: "0",
+                      code: "MULTICARVIP",
+                      isActive: true,
+                    });
+                  }}
+                  className="bg-zinc-805 border border-zinc-750 hover:bg-red-600 hover:text-white hover:border-red-600 text-xs px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer text-gray-300 outline-none"
+                >
+                  🚗 Multi-Car (VIP)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const rainyDaySvc = services.find((s) => s.name.toLowerCase().includes("rainy"));
+                    setForm({
+                      ...form,
+                      title: "Rainy Day Protection",
+                      description: "Discount applicable exclusively on Rainy Day Shine detailing packages.",
+                      discountPercent: "0",
+                      discountAmount: "250",
+                      validDays: [],
+                      startTime: "",
+                      endTime: "",
+                      applicableServiceIds: rainyDaySvc ? [rainyDaySvc.id] : [],
+                      minVehicles: "1",
+                      discountSecondVehicleAmount: "0",
+                      code: "RAINYSHINE",
+                      isActive: true,
+                    });
+                  }}
+                  className="bg-zinc-805 border border-zinc-750 hover:bg-red-600 hover:text-white hover:border-red-600 text-xs px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer text-gray-300 outline-none"
+                >
+                  🌧️ Rainy Day Special
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({
+                      ...form,
+                      title: "Grand Festival Flat",
+                      description: "Enjoy a flat Rs. 200 off on any detailing service today!",
+                      discountPercent: "0",
+                      discountAmount: "200",
+                      validDays: [],
+                      startTime: "",
+                      endTime: "",
+                      applicableServiceIds: [],
+                      minVehicles: "1",
+                      discountSecondVehicleAmount: "0",
+                      code: "FESTIVAL200",
+                      isActive: true,
+                    });
+                  }}
+                  className="bg-zinc-805 border border-zinc-750 hover:bg-red-600 hover:text-white hover:border-red-600 text-xs px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer text-gray-300 outline-none"
+                >
+                  🎉 Flat Festival Off
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <input placeholder="Offer Title (e.g. Diwali Special)" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full bg-black border border-zinc-700 p-3 rounded" />
               <textarea placeholder="Offer Description (Optional)" value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full bg-black border border-zinc-700 p-3 rounded" />

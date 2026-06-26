@@ -1,16 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { createToken } from "@/lib/auth";
+import { createToken, sanitizeIdentifier } from "@/lib/auth";
 import { serialize } from "cookie";
 
 export async function POST(req: Request) {
   try {
-    const { identifier, otp } = await req.json();
+    const { identifier: rawIdentifier, otp } = await req.json();
 
-    if (!identifier || !otp) {
+    if (!rawIdentifier || !otp) {
       return NextResponse.json({ success: false, message: "Missing fields" }, { status: 400 });
     }
+
+    const identifier = sanitizeIdentifier(rawIdentifier);
 
     const employee = await prisma.employee.findFirst({
       where: {

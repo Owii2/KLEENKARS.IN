@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,8 +23,14 @@ export default function Sidebar() {
         <Link href="/admin" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Dashboard
         </Link>
+        <Link href="/admin/reports" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl font-semibold text-red-400 border border-red-500/10">
+          Analytics & Reports
+        </Link>
         <Link href="/admin/bookings" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Bookings
+        </Link>
+        <Link href="/admin/transactions" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Transactions
         </Link>
         <Link href="/admin/employees" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Employees
@@ -32,11 +38,23 @@ export default function Sidebar() {
         <Link href="/admin/attendance" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Attendance
         </Link>
+        <Link href="/admin/payroll" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Payroll
+        </Link>
+        <Link href="/admin/inventory" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Inventory
+        </Link>
+        <Link href="/admin/membership-plans" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Membership Plans
+        </Link>
         <Link href="/admin/customers" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Customers
         </Link>
         <Link href="/admin/expenses" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Expenses
+        </Link>
+        <Link href="/admin/refunds" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Refunds
         </Link>
         <Link href="/admin/services" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Services
@@ -47,11 +65,23 @@ export default function Sidebar() {
         <Link href="/admin/daily-closing" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Daily Closing
         </Link>
+        <Link href="/admin/settings" className="block bg-[#111] hover:bg-red-600 transition p-4 rounded-2xl border border-white/5">
+          Console Settings
+        </Link>
         <Link href="/admin/franchise" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Franchise Applications
         </Link>
-        <Link href="/admin/memberships" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
-          Memberships
+        <Link href="/admin/referrals" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Referrals
+        </Link>
+        <Link href="/admin/approvals" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Approvals Center
+        </Link>
+        <Link href="/admin/chatbot" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Chatbot Agent
+        </Link>
+        <Link href="/admin/blog" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+          Blog Posts
         </Link>
       </nav>
 

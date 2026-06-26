@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
-
 import { NextResponse } from "next/server";
 import { requireRoles } from "@/lib/apiAuth";
+import { generateNextCustomerId } from "@/lib/auth";
 
 
 export async function GET() {
@@ -83,10 +83,13 @@ export async function POST(
       });
     }
 
+    const nextId = await generateNextCustomerId();
     const customer =
       await prisma.customer.create({
 
         data: {
+
+          id: nextId,
 
           customerName:
             body.customerName,

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import twilio from 'twilio';
+import { generateNextCustomerId } from '@/lib/auth';
 
 interface OtpRequestBody {
   phoneNumber?: string;
@@ -20,7 +21,14 @@ export async function POST(req: Request) {
     // find or create customer
     let customer = await prisma.customer.findUnique({ where: { phoneNumber } });
     if (!customer) {
-      customer = await prisma.customer.create({ data: { phoneNumber, customerName: 'Guest' } });
+      const nextId = await generateNextCustomerId();
+      customer = await prisma.customer.create({
+        data: {
+          id: nextId,
+          phoneNumber,
+          customerName: 'Guest'
+        }
+      });
     }
 
     await prisma.customer.update({ where: { id: customer.id }, data: { otpHash: hashed, otpExpires: expires } });

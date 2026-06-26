@@ -39,14 +39,26 @@ export async function GET() {
   }
 }
 
-export async function POST() {
-  const auth = await requireRoles(["admin"]);
+export async function POST(req: Request) {
+  const auth = await requireRoles(["admin", "manager", "supervisor"]);
 
   if (auth.response) {
     return auth.response;
   }
 
   try {
+    let cashClosingAfterExpenses = 0;
+    let dailyWageDeductions = 0;
+    let onlinePaymentCollected = 0;
+
+    try {
+      const body = await req.json();
+      cashClosingAfterExpenses = Number(body.cashClosingAfterExpenses || 0);
+      dailyWageDeductions = Number(body.dailyWageDeductions || 0);
+      onlinePaymentCollected = Number(body.onlinePaymentCollected || 0);
+    } catch (e) {
+      // Empty body allowed
+    }
 
     const today =
       new Date().toISOString().split("T")[0];
@@ -122,6 +134,10 @@ export async function POST() {
 
           upiRevenue,
 
+          cashClosingAfterExpenses,
+          dailyWageDeductions,
+          onlinePaymentCollected,
+
         },
 
         create: {
@@ -140,6 +156,10 @@ export async function POST() {
           cashRevenue,
 
           upiRevenue,
+
+          cashClosingAfterExpenses,
+          dailyWageDeductions,
+          onlinePaymentCollected,
 
         },
 

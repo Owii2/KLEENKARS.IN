@@ -55,8 +55,9 @@ model Booking {
 
 model Customer {
   id                String    @id @default(cuid())
-  customerName      String
-  phoneNumber       String    @unique
+  customerName      String?
+  phoneNumber       String?   @unique
+  whatsAppNumber    String?
   vehicleNumber     String? // This old field will be managed by new Vehicle model
   vehicleType       String? // This old field will be managed by new Vehicle model
   totalVisits       Int       @default(0)
@@ -87,6 +88,7 @@ model Customer {
   memberships   Membership[]
   rewardPoints  RewardPoint[]
   Booking       Booking[]
+  chatSessions  ChatSession[]
 }
 
 model Employee {
@@ -142,6 +144,7 @@ model Employee {
 
   isActive Boolean @default(true)
 
+  expenses Expense[]
   createdAt DateTime @default(now())
 }
 
@@ -166,19 +169,58 @@ model Attendance {
 model Expense {
   id String @id @default(cuid())
 
-  title String
-
+  // Required fields
+  date DateTime
   amount Int
 
-  category String
-
-  paymentMode String
-
+  // Optional fields
+  time String?
+  category String?
+  description String?
+  paidTo String?
+  paymentMode String?
+  invoiceNumber String?
+  vendorGSTNumber String?
+  receiptUrl String?
   notes String?
+  employeeId String?
+  employee Employee? @relation(fields: [employeeId], references: [id])
+  branch String?
+  project String?
+  costCenter String?
 
   createdBy String?
-
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+   updatedBy String?
+   @@index([date])
+   @@index([category])
+   @@index([paymentMode])
+  attachments Attachment[]
+}
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  disabled  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentMode {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  disabled  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  expenseId String
+  url       String
+  mimeType  String
+  createdAt DateTime @default(now())
+  expense   Expense @relation(fields: [expenseId], references: [id])
 }
 
 model DailyClosing {
@@ -197,6 +239,10 @@ model DailyClosing {
   cashRevenue Int
 
   upiRevenue Int
+
+  cashClosingAfterExpenses Int? @default(0)
+  dailyWageDeductions      Int? @default(0)
+  onlinePaymentCollected   Int? @default(0)
 
   createdAt DateTime @default(now())
 }
@@ -272,13 +318,16 @@ model SystemSetting {
 }
 
 model Vehicle {
-  id          String   @id @default(cuid())
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id])
-  plateNumber String   @unique
-  type        String
+  id          String    @id @default(cuid())
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  plateNumber String?   @unique
+  type        String?
+  brand       String?
+  model       String?
+  color       String?
   value       Int? // in Lakhs, e.g., 15 for 15 Lakhs
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 }
 
 model LoyaltyTier {
@@ -323,3 +372,198 @@ model Membership {
   status           String         @default("ACTIVE")
   createdAt        DateTime       @default(now())
 }
+model Event {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique
+  type        String   // e.g., "holiday", "promo", "local_festival"
+  description String?
+}
+
+model WeatherLog {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique // UTC date
+  temperature Float    // average temperature (°C)
+  condition   String   // e.g., "Clear", "Rain", "Snow"
+} 
+
+// Blog platform models
+model Author {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  bio       String?
+  avatarUrl String?
+  posts     BlogPost[]
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  seoTitle    String?
+  seoDesc     String?
+  posts       BlogPost[] @relation("PostCategories")
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+  posts BlogPost[] @relation("PostTags")
+}
+
+model Media {
+  id         Int      @id @default(autoincrement())
+  url        String
+  altText    String?
+  width      Int?
+  height     Int?
+  uploadedAt DateTime @default(now())
+  post       BlogPost?
+}
+
+model BlogPost {
+  id                Int        @id @default(autoincrement())
+  title             String
+  slug              String     @unique
+  excerpt           String?
+  content           String
+  publishedAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  status            String     @default("draft")
+  viewCount         Int        @default(0)
+  likeCount         Int        @default(0)
+  authorId          Int
+  author            Author     @relation(fields: [authorId], references: [id])
+  categories        Category[] @relation("PostCategories")
+  tags              Tag[]      @relation("PostTags")
+  featuredImageId   Int? @unique
+  featuredImage     Media?     @relation(fields: [featuredImageId], references: [id])
+  seoTitle          String?
+  seoDescription    String?
+  focusKeyword      String?
+  canonicalUrl      String?
+  openGraphImageUrl String?
+  views            BlogView[]
+  likes            BlogLike[]
+  scheduledPosts   ScheduledPost[]
+}
+
+model BlogView {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  post      BlogPost @relation(fields: [postId], references: [id])
+  ip        String
+  userAgent String?
+  viewedAt  DateTime @default(now())
+}
+
+model BlogLike {
+  id     Int      @id @default(autoincrement())
+  postId Int
+  post   BlogPost @relation(fields: [postId], references: [id])
+  ip     String
+  likedAt DateTime @default(now())
+}
+
+model ScheduledPost {
+  id          Int      @id @default(autoincrement())
+  postId      Int
+  post        BlogPost @relation(fields: [postId], references: [id])
+  scheduledFor DateTime
+  timezone    String
+  status      String   @default("queued")
+}
+
+model ChatBotKnowledge {
+  id        Int      @id @default(autoincrement())
+  question  String   @db.Text
+  answer    String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChatSession {
+  id           String        @id @default(cuid())
+  customerName String
+  customerId   String?
+  customer     Customer?     @relation(fields: [customerId], references: [id])
+  isPermanent  Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  messages     ChatMessage[]
+}
+
+model ChatMessage {
+  id        Int         @id @default(autoincrement())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender    String      // "user" | "bot"
+  text      String      @db.Text
+  createdAt DateTime    @default(now())
+}
+
+model InventoryItem {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  quantity    Int
+  unit        String   // e.g., "Liters", "Pieces", "Boxes"
+  minStock    Int      @default(5)
+  costPerUnit Int
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+model Payroll {
+  id           String    @id @default(cuid())
+  employeeId   String
+  employeeName String
+  employeeCode String
+  month        String    // e.g., "2026-06"
+  workingDays  Int
+  dailyWage    Int
+  advances     Int       @default(0)
+  deductions   Int       @default(0)
+  netPayable   Int
+  status       String    @default("Unpaid") // "Paid" | "Unpaid"
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model Refund {
+  id           String   @id @default(cuid())
+  bookingId    String   @unique
+  bookingRef   String
+  customerName String
+  amount       Int
+  reason       String
+  paymentMode  String   @default("UPI")
+  status       String   @default("Processed") // "Processed" | "Pending"
+  createdAt    DateTime @default(now())
+}
+
+model Transaction {
+  id               String   @id @default(cuid())
+  date             String // Date string format, e.g. YYYY-MM-DD
+  amount           Int
+  paymentMode      String // Cash, UPI, Card, etc.
+  time             String?
+  customerName     String?
+  customerMobile   String?
+  customerId       String? // Optional relation back-reference/info
+  vehicleNumber    String?
+  vehicleType      String?
+  serviceOpted     String?
+  addonServices    String?
+  assignedEmployee String?
+  discountAmount   Int?     @default(0)
+  finalAmount      Int?
+  notes            String?
+  invoiceId        String   @unique @default(cuid()) // Auto Generated
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdBy        String?  // Username or email of creator
+}
+

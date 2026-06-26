@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "./page.module.css";
 import { useEffect, useState } from "react";
+import { ChatBotWidget } from "@/components/ui/ChatBotWidget";
 
 interface Offer {
   id: string;
@@ -18,42 +19,101 @@ interface OffersResponse {
   offers?: Offer[];
 }
 
+interface Service {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  category: string | null;
+  isActive: boolean;
+  isStartingPrice?: boolean;
+}
+
 export default function HomePage() {
   const [activeOffer, setActiveOffer] = useState<Offer | null>(null);
   const [showOfferPopup, setShowOfferPopup] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
 
   useEffect(() => {
-    // Check if offer popup was already shown in this session
-    const hasSeenOffer = sessionStorage.getItem("offerPopupSeen");
-    
-    if (!hasSeenOffer) {
-      // Fetch active offers
-      fetch("/api/offers")
-        .then(res => res.json() as Promise<OffersResponse>)
-        .then(data => {
-          if (data.success && data.offers && data.offers.length > 0) {
-            // Find the first active offer that has an image poster
-            const offerWithImage = data.offers.find((o) => o.isActive && o.imageUrl);
-            if (offerWithImage) {
-              setActiveOffer(offerWithImage);
-              setShowOfferPopup(true);
+    // Load services
+    fetch("/api/services")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          const activeServices = data.services.filter((s: Service) => s.isActive);
+          const consolidated: Service[] = [];
+          const serviceMap: Record<string, Service & { prices: number[] }> = {};
+          
+          const vehicleSpecificServicePattern = /^(.+?)\s*-\s*(Bike|Hatchback|Sedan|Hatchback\/Sedan|Sedan\/MUV|SUV|MUV|SUV\/MUV)$/i;
+
+          activeServices.forEach((svc: Service) => {
+            if (svc.category === "Addon") {
+              return;
             }
+
+            const match = svc.name.match(vehicleSpecificServicePattern);
+            if (match) {
+              const genericName = match[1].trim();
+              const vehicleType = match[2].trim();
+              if (vehicleType.toLowerCase() === "bike") {
+                return;
+              }
+              if (!serviceMap[genericName]) {
+                serviceMap[genericName] = {
+                  ...svc,
+                  id: `group:${genericName}`,
+                  name: genericName,
+                  prices: [svc.price],
+                };
+              } else {
+                serviceMap[genericName].prices.push(svc.price);
+              }
+            } else {
+              consolidated.push(svc);
+            }
+          });
+
+          Object.values(serviceMap).forEach((groupSvc) => {
+            const minPrice = Math.min(...groupSvc.prices);
+            consolidated.push({
+              ...groupSvc,
+              price: minPrice,
+              isStartingPrice: true,
+            });
+          });
+
+          setServices(consolidated);
+        }
+      })
+      .catch(console.error);
+
+  // Check if offer popup was already shown
+  const hasSeenOffer = sessionStorage.getItem("offerPopupSeen");
+
+  if (!hasSeenOffer) {
+    fetch("/api/offers")
+      .then((res) => res.json() as Promise<OffersResponse>)
+      .then((data) => {
+        if (data.success && data.offers && data.offers.length > 0) {
+          const offerWithImage = data.offers.find(
+            (o) => o.isActive && o.imageUrl
+          );
+
+          if (offerWithImage) {
+            setActiveOffer(offerWithImage);
+            setShowOfferPopup(true);
           }
-        })
-        .catch(console.error);
-    }
-  }, []);
+        }
+      })
+      .catch(console.error);
+  }
+}, []);
 
   const closeOfferPopup = () => {
     setShowOfferPopup(false);
     sessionStorage.setItem("offerPopupSeen", "true");
   };
 
-  const services = [
-    { title: "Express Wash", price: "₹149", description: "Fast exterior wash to keep your car shining daily." },
-    { title: "Classic Wash", price: "₹199", description: "Full exterior + interior vacuum for a spotless ride." },
-    { title: "Premium Wash", price: "₹299", description: "Deep clean, polish, tyre shine & fragrance finish." },
-  ];
 
   const stats = [
     { label: "Google Rating", value: "5.0★" },
@@ -185,22 +245,33 @@ export default function HomePage() {
               <p className="text-red-400 uppercase tracking-[0.35em] font-semibold mb-3">Our Packages</p>
               <h2 className="text-4xl font-black">Choose the service that fits your car.</h2>
             </div>
-            <Link href="/booking" className={styles.secondaryBtn}>View all packages</Link>
+            <Link href="/packages" className={styles.secondaryBtn}>View all packages</Link>
           </div>
 
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {services.map((item) => (
-              <div key={item.title} className={`${styles.serviceCard} p-8`}>
-                <div className="mb-4">
-                  <h3 className="text-2xl font-semibold mb-2">{item.title}</h3>
-                  <p className="text-gray-400">{item.description}</p>
-                </div>
-                <div className="flex items-center justify-between gap-4 mt-6">
-                  <span className="text-3xl font-black text-red-500">{item.price}</span>
-                  <Link href="/booking" className={styles.primaryBtn}>Book now</Link>
-                </div>
-              </div>
-            ))}
+  <div key={item.id} className={`${styles.serviceCard} p-8`}>
+    <div className="mb-4">
+      <h3 className="text-2xl font-semibold mb-2">
+        {item.name}
+      </h3>
+
+      <p className="text-gray-400">
+        {item.description}
+      </p>
+    </div>
+
+    <div className="flex items-center justify-between gap-4 mt-6">
+      <span className="text-2xl font-black text-red-500">
+        {item.isStartingPrice ? `Starting at ₹${item.price}` : `₹${item.price}`}
+      </span>
+
+      <Link href="/booking" className={styles.primaryBtn}>
+        Book now
+      </Link>
+    </div>
+  </div>
+))}
           </div>
         </section>
 
@@ -294,14 +365,16 @@ export default function HomePage() {
               <p className="text-gray-400">Premium doorstep car wash and detailing service.</p>
             </div>
 
-            <div className="flex flex-wrap gap-4 text-gray-400">
-              <Link href="/booking">Book Service</Link>
-              <Link href="/login">Staff Login</Link>
-              <Link href="/franchise">Franchise</Link>
+            <div className="flex flex-wrap gap-6 text-sm text-gray-400">
+              <Link href="/booking" className="hover:text-red-500 transition-colors duration-200">Book Service</Link>
+              <Link href="/blog" className="hover:text-red-500 transition-colors duration-200">Blog</Link>
+              <Link href="/login" className="hover:text-red-500 transition-colors duration-200">Staff Login</Link>
+              <Link href="/franchise" className="hover:text-red-500 transition-colors duration-200">Franchise</Link>
             </div>
           </div>
         </footer>
       </main>
+      <ChatBotWidget />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { signToken, COOKIE_MAX_AGE } from '@/lib/jwt';
-import { createRefreshToken } from '@/lib/auth';
+import { createRefreshToken, generateNextCustomerId } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +16,16 @@ export async function POST(req: Request) {
 
     const hashed = await bcrypt.hash(password, 10);
 
-    const customer = await prisma.customer.create({ data: { customerName, phoneNumber, email, password: hashed } });
+    const nextId = await generateNextCustomerId();
+    const customer = await prisma.customer.create({
+      data: {
+        id: nextId,
+        customerName,
+        phoneNumber,
+        email,
+        password: hashed
+      }
+    });
 
     const token = signToken({ id: customer.id, role: 'customer' });
     const { raw: refreshRaw } = await createRefreshToken(customer.id);

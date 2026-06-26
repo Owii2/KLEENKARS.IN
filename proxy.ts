@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "@/lib/jwt";
 
 export function proxy(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
@@ -10,7 +9,7 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const user = verifyToken(token);
+  const user = verifyToken(token) as any;
 
   if (!user) {
     return NextResponse.redirect(new URL("/login", req.url));
@@ -33,7 +32,11 @@ export function proxy(req: NextRequest) {
     user.role !== "staff" &&
     user.role !== "supervisor" &&
     user.role !== "manager" &&
-    user.role !== "admin"
+    user.role !== "admin" &&
+    user.role !== "washer" &&
+    user.role !== "detailer" &&
+    user.role !== "pickup_driver" &&
+    user.role !== "cashier"
   ) {
     return NextResponse.redirect(new URL("/login", req.url));
   }

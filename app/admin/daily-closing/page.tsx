@@ -15,6 +15,9 @@ interface DailyClosing {
   totalBookings: number;
   cashRevenue: number;
   upiRevenue: number;
+  cashClosingAfterExpenses?: number | null;
+  dailyWageDeductions?: number | null;
+  onlinePaymentCollected?: number | null;
 }
 
 export default function DailyClosingPage() {
@@ -144,6 +147,35 @@ export default function DailyClosingPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Supervisor Submissions */}
+              {(closing.cashClosingAfterExpenses !== undefined && closing.cashClosingAfterExpenses !== null ||
+                closing.dailyWageDeductions !== undefined && closing.dailyWageDeductions !== null ||
+                closing.onlinePaymentCollected !== undefined && closing.onlinePaymentCollected !== null) && (
+                <div className="mt-6 pt-6 border-t border-white/5">
+                  <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">Supervisor Closing Report</h3>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div className="bg-[#111] border border-gray-800 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 mb-1">Cash Closing (After Expenses)</p>
+                      <p className="text-xl font-bold text-yellow-300">
+                        Rs. {closing.cashClosingAfterExpenses ?? 0}
+                      </p>
+                    </div>
+                    <div className="bg-[#111] border border-gray-800 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 mb-1">Daily Wage Deductions</p>
+                      <p className="text-xl font-bold text-red-300">
+                        Rs. {closing.dailyWageDeductions ?? 0}
+                      </p>
+                    </div>
+                    <div className="bg-[#111] border border-gray-800 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 mb-1">Online Payments Collected</p>
+                      <p className="text-xl font-bold text-blue-300">
+                        Rs. {closing.onlinePaymentCollected ?? 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </Card>
           ))
         )}

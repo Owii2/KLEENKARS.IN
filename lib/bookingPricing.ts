@@ -1,4 +1,4 @@
-export type VehicleType = "bike" | "hatchback" | "sedan" | "suv" | "muv";
+export type VehicleType = "bike" | "hatchback" | "sedan" | "suv" | "muv" | "truck" | "van" | "traveller" | "bus" | "e-rickshaw" | "tractor" | "others";
 
 export interface PricingService {
   id: string;
@@ -49,9 +49,16 @@ export const vehicleSuffixMap: Record<string, VehicleType[]> = {
   SUV: ["suv"],
   MUV: ["muv"],
   "SUV/MUV": ["suv", "muv"],
+  Truck: ["truck"],
+  Van: ["van"],
+  Traveller: ["traveller"],
+  Bus: ["bus"],
+  "E-Rickshaw": ["e-rickshaw"],
+  Tractor: ["tractor"],
+  Others: ["others"]
 };
 
-export const vehicleSpecificServicePattern = /^(.+?)\s*-\s*(Bike|Hatchback|Sedan|Hatchback\/Sedan|Sedan\/MUV|SUV|MUV|SUV\/MUV)$/i;
+export const vehicleSpecificServicePattern = /^(.+?)\s*-\s*([A-Za-z0-9\/\-\s]+)$/i;
 
 export const getVehicleTypesForSuffix = (suffix: string): VehicleType[] => {
   const normalizedSuffix = Object.keys(vehicleSuffixMap).find(

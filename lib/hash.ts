@@ -12,7 +12,12 @@ export async function comparePassword(
   password: string,
   hashed: string
 ) {
-
-  return bcrypt.compare(password, hashed);
-
+  if (!hashed || (!hashed.startsWith("$2a$") && !hashed.startsWith("$2b$") && !hashed.startsWith("$2y$"))) {
+    return password === hashed;
+  }
+  try {
+    return await bcrypt.compare(password, hashed);
+  } catch {
+    return false;
+  }
 }

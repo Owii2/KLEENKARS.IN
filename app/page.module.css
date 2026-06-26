@@ -158,6 +158,16 @@
   border: 1px solid rgba(255,255,255,0.08);
 }
 
+.mapContainer iframe {
+  filter: invert(90%) hue-rotate(180deg) grayscale(10%) contrast(90%);
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
+
+.mapContainer iframe:hover {
+  opacity: 1;
+}
+
 .footerBrand {
   font-weight: 900;
   color: var(--brand-end);

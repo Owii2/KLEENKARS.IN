@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import Card from "@/components/ui/Card";
@@ -33,6 +34,51 @@ export default function CustomerPage() {
     isBlacklisted: false,
     newPassword: "",
   });
+
+  // Bulk action selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(customers.map((c) => c.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const exportToCSV = () => {
+    const selectedCustomers = customers.filter((c) => selectedIds.includes(c.id));
+    const headers = ["Customer ID", "Customer Name", "Phone", "Email", "Vehicle Type", "Tag", "Total Visits", "Total Spent", "Blacklisted"];
+    const rows = selectedCustomers.map((c) => [
+      c.id,
+      c.customerName,
+      c.phoneNumber,
+      c.email || "",
+      c.vehicleType || "",
+      c.tag || "",
+      c.totalVisits,
+      c.totalSpent,
+      c.isBlacklisted ? "Yes" : "No"
+    ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `customers_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleEditClick = (customer: Customer) => {
     setEditingCustomer(customer);
@@ -120,12 +166,55 @@ export default function CustomerPage() {
         />
       </div>
 
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-white">Registered CRM Contacts</h2>
+        <Link 
+          href="/admin/customers/inactive" 
+          className="bg-red-600/10 hover:bg-red-600 border border-red-900/30 hover:border-red-600 text-red-500 hover:text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer"
+        >
+          🎁 Launch Win-Back Campaigns
+        </Link>
+      </div>
+
+      {selectedIds.length > 0 && (
+        <div className="bg-red-950/20 border border-red-900/50 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <span className="bg-red-600 text-white font-bold px-2.5 py-1 rounded text-xs">
+              {selectedIds.length} SELECTED
+            </span>
+            <p className="text-sm text-gray-300">Export selected customer CRM records</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={exportToCSV}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer"
+            >
+              Export Selected CSV
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="text-gray-400 hover:text-white px-3 py-2 text-xs font-semibold transition cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <Card>
         {error ? <p className="text-red-400 mb-4">{error}</p> : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="bg-red-600">
+                <th className="p-3 text-center w-12">
+                  <input
+                    type="checkbox"
+                    checked={customers.length > 0 && selectedIds.length === customers.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 accent-red-600 cursor-pointer rounded"
+                  />
+                </th>
                 <th className="p-3 text-left">Customer</th>
                 <th className="p-3 text-left">Contact</th>
                 <th className="p-3 text-left">Tag / Status</th>
@@ -138,19 +227,27 @@ export default function CustomerPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="p-4" colSpan={7}>
+                  <td className="p-4" colSpan={8}>
                     Loading customers...
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td className="p-4" colSpan={7}>
+                  <td className="p-4" colSpan={8}>
                     No customers found.
                   </td>
                 </tr>
               ) : (
                 customers.map((customer) => (
                   <tr key={customer.id} className="border-b border-gray-800">
+                    <td className="p-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(customer.id)}
+                        onChange={() => handleSelectRow(customer.id)}
+                        className="w-4 h-4 accent-red-600 cursor-pointer rounded"
+                      />
+                    </td>
                     <td className="p-3 font-medium">{customer.customerName}</td>
                     <td className="p-3">
                       <div>{customer.phoneNumber}</div>

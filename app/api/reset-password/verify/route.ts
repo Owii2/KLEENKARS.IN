@@ -3,13 +3,17 @@ import { hashPassword } from "@/lib/hash";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
+import { sanitizeIdentifier } from "@/lib/auth";
+
 export async function POST(req: Request) {
   try {
-    const { identifier, otp, newPassword } = await req.json();
+    const { identifier: rawIdentifier, otp, newPassword } = await req.json();
 
-    if (!identifier || !otp || !newPassword) {
+    if (!rawIdentifier || !otp || !newPassword) {
       return NextResponse.json({ success: false, message: "Missing fields" }, { status: 400 });
     }
+
+    const identifier = sanitizeIdentifier(rawIdentifier);
 
     const employee = await prisma.employee.findFirst({
       where: {

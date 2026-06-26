@@ -30,29 +30,82 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<LocalBooking[]>([]);
   const router = useRouter();
 
+  const refresh = () => {
+    const stored = window.localStorage.getItem("customerUser");
+    const u = stored ? (JSON.parse(stored) as CustomerUser) : null;
+
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.customer) {
+          const c = data.customer;
+          if (c.bookings) {
+            const mappedBookings = c.bookings.map((b: any) => ({
+              id: b.id,
+              name: b.customerName,
+              phone: b.phoneNumber,
+              service: b.serviceType || "Wash",
+              amount: b.totalCost,
+              date: b.bookingDate,
+              time: b.bookingTime,
+              status: b.status,
+              vehicle: b.vehicleType,
+              addons: b.addons || [],
+            }));
+            setBookings(mappedBookings.sort((a: any, b: any) => (a.date > b.date ? 1 : -1)));
+
+            // Sync cache
+            const allLocal = JSON.parse(window.localStorage.getItem("bookings") || "[]") as any[];
+            const otherLocal = allLocal.filter((x) => x.phone !== c.phone);
+            window.localStorage.setItem("bookings", JSON.stringify([...otherLocal, ...mappedBookings]));
+          }
+        } else if (u) {
+          const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
+          setBookings(all.filter((b) => b.phone === u.phone).sort((a, b) => (a.date > b.date ? 1 : -1)));
+        }
+      })
+      .catch(() => {
+        if (u) {
+          const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
+          setBookings(all.filter((b) => b.phone === u.phone).sort((a, b) => (a.date > b.date ? 1 : -1)));
+        }
+      });
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("customerUser");
-    const u = stored ? JSON.parse(stored) as CustomerUser : null;
+    const u = stored ? (JSON.parse(stored) as CustomerUser) : null;
     setUser(u);
-    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
-    setBookings(all.filter((b) => b.phone === u?.phone).sort((a, b) => (a.date > b.date ? 1 : -1)));
+
+    // Initial cache load
+    if (u) {
+      const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
+      setBookings(all.filter((b) => b.phone === u.phone).sort((a, b) => (a.date > b.date ? 1 : -1)));
+    }
+
+    refresh();
   }, []);
 
-  const refresh = () => {
-    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
-    const stored = window.localStorage.getItem("customerUser");
-    const u = stored ? JSON.parse(stored) as CustomerUser : null;
-    setBookings(all.filter((b) => b.phone === u?.phone));
-  };
-
-  const cancel = (id: string) => {
-    const all = JSON.parse(window.localStorage.getItem("bookings") || "[]") as LocalBooking[];
-    const idx = all.findIndex((x) => x.id === id);
-    if (idx === -1) return;
-    all[idx].status = "Cancelled";
-    window.localStorage.setItem("bookings", JSON.stringify(all));
-    refresh();
+  const cancel = async (id: string) => {
+    if (!confirm("Are you sure you want to cancel this booking?")) return;
+    try {
+      const res = await fetch(`/api/bookings/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Cancelled" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("Booking cancelled successfully");
+        refresh();
+      } else {
+        alert(data.message || "Failed to cancel booking");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong");
+    }
   };
 
   const rebook = (b: LocalBooking) => {
@@ -61,7 +114,6 @@ export default function BookingsPage() {
   };
 
   const generatePdf = (b: LocalBooking) => {
-    // render an HTML invoice, capture with html2canvas and save via jsPDF
     const container = document.createElement('div');
     container.style.position = 'fixed';
     container.style.left = '-10000px';
@@ -69,15 +121,15 @@ export default function BookingsPage() {
     container.style.width = '800px';
     container.innerHTML = `
       <div style="font-family: Arial, sans-serif; color: #111; padding:20px; width:760px;">
-        <h1 style="color:#e11d48">OWII Invoice</h1>
+        <h1 style="color:#e11d48">KLEENKARS Invoice</h1>
         <div>Invoice ID: ${b.id}</div>
         <div>Date: ${b.date} ${b.time || ''}</div>
         <div>Customer: ${b.name || ''}</div>
         <div>Phone: ${b.phone}</div>
         <div>Service: ${b.service}</div>
         <div>Amount: ₹${b.amount}</div>
-        ${b.addons && b.addons.length ? `<div>Addons: ${b.addons.join(', ')}</div>` : ''}
-        <div>Status: ${b.status}</div>
+        \${b.addons && b.addons.length ? \`<div>Addons: \${b.addons.join(', ')}</div>\` : ''}
+        <div>Status: \${b.status}</div>
       </div>
     `;
     document.body.appendChild(container);
@@ -85,9 +137,13 @@ export default function BookingsPage() {
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ unit: 'px', format: [canvas.width, canvas.height] });
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-      pdf.save(`invoice_${b.id}.pdf`);
+      pdf.save(`invoice_\${b.id}.pdf`);
       document.body.removeChild(container);
-    }).catch(err => { console.log(err); alert('Failed to generate PDF'); document.body.removeChild(container); });
+    }).catch(err => {
+      console.log(err);
+      alert('Failed to generate PDF');
+      document.body.removeChild(container);
+    });
   };
 
   if (!user) return <div className="p-6">Please <Link href="/customer/login">login</Link></div>;
