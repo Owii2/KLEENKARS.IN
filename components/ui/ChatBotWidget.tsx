@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   sender: "user" | "bot";
@@ -178,12 +179,34 @@ export function ChatBotWidget() {
                     className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed
+                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed
                         ${m.sender === "user"
                           ? "bg-red-600 text-white rounded-tr-none"
                           : "bg-zinc-900 text-zinc-200 border border-zinc-800/80 rounded-tl-none"}`}
                     >
-                      {m.text}
+                      {m.sender === "user" ? (
+                        m.text
+                      ) : (
+                        <div className="space-y-1">
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                              h3: ({ children }) => <h3 className="text-xs font-bold text-white mt-2.5 mb-1 first:mt-0 border-b border-zinc-800/60 pb-0.5">{children}</h3>,
+                              ul: ({ children }) => <ul className="list-disc pl-4 space-y-0.5 my-1">{children}</ul>,
+                              li: ({ children }) => <li className="list-item text-zinc-300">{children}</li>,
+                              strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                              em: ({ children }) => <em className="italic text-zinc-400">{children}</em>,
+                              a: ({ href, children }) => (
+                                <Link href={href || "#"} className="text-red-400 hover:text-red-300 underline font-medium">
+                                  {children}
+                                </Link>
+                              )
+                            }}
+                          >
+                            {m.text}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -25,7 +25,15 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
 
   // Greeting Match (Checking if query is a simple greeting)
   if (greetings.some(g => words.includes(g)) || messageLower === "hi" || messageLower === "hello") {
-    return "Hello! Welcome to Kleenkars Support. I can help you with wash packages, pricing details, active coupon offers, and general guidelines. How can I assist you today?";
+    return `👋 **Hello! Welcome to Kleenkars Support.**
+
+I can assist you with:
+* 🚗 **Wash Packages & Pricing**
+* 🏷️ **Active Coupons & Offers**
+* 📍 **Location & Timings**
+* 📅 **Booking & Appointments**
+
+How can I assist you today?`;
   }
 
   // Capability / Help Check
@@ -40,12 +48,23 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
     messageLower.includes("ai") ||
     messageLower.includes("help me")
   ) {
-    return "I am the Kleenkars AI Support Agent. You can ask me questions about our car wash packages (like Express Wash, Premium Wash, Rainy Day Shine), pricing, opening hours, current discounts, or booking procedures. How can I help you today?";
+    return `🤖 **I am the Kleenkars AI Support Assistant.**
+
+You can ask me questions about:
+* 🧼 **Our Packages** (Express, Classic, Premium, and specialized detailing)
+* 💰 **Pricing & Quotes**
+* 🕒 **Store Timings & Address**
+* 🎁 **Discounts & active promo codes**
+* 📅 **How to make or change bookings**
+
+How can I help you today?`;
   }
 
   // Thanks Match
   if (thanks.some(t => messageLower.includes(t))) {
-    return "You're very welcome! If you have any more questions or want to schedule a wash, feel free to ask. Have a wonderful day!";
+    return `😊 **You're very welcome!**
+
+If you have any more questions or want to schedule a wash, feel free to ask. Have a wonderful day! 🚗✨`;
   }
 
   // Booking Intent Match
@@ -57,12 +76,20 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
     bookingKeywords.some(kw => messageLower.includes(kw)) ||
     (positiveConfirms.some(pc => wordsLower.includes(pc)) && words.length <= 4)
   ) {
-    return "Great! You can book your service directly online by going to our **[Booking Page](/booking)**. Simply choose your wash package, select your vehicle, choose a date & time, and confirm. Let me know if you need help choosing a package!";
+    return `📅 **Ready to book your wash?**
+
+You can schedule your service online in just a few clicks:
+1. Go to our **[Booking Page](/booking)**.
+2. Select your vehicle type and choose your wash package.
+3. Select your preferred date and time slot.
+4. Confirm your booking!
+
+_If you need help selecting the right package for your vehicle, feel free to ask!_`;
   }
 
   // Confirmation/Closing Match
   if (confirmations.some(c => words.includes(c)) && words.length <= 2) {
-    return "Great! Let me know if there's anything else you need. You can book a wash anytime using the 'Book Now' button on our homepage!";
+    return `Awesome! 👍 Let me know if there is anything else I can help you with. You can also book a wash anytime directly via the website. Have a great day!`;
   }
 
   // Helper to extract a group name from service names
@@ -241,16 +268,26 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
   if (matchedGroup && groupedServices[matchedGroup]) {
     const matches = groupedServices[matchedGroup];
     const matchesStr = matches
-      .map(s => `- **${s.name}**: ₹${s.price}${s.description ? ` (${s.description})` : ""}`)
+      .map(s => `* **${s.name}**: **₹${s.price}**${s.description ? `\n  _${s.description}_` : ""}`)
       .join("\n");
-    return `For **${matchedGroup}**, we offer the following packages:\n${matchesStr}\n\nWould you like to book one of these packages online?`;
+    return `✨ **Packages for ${matchedGroup}:**
+
+${matchesStr}
+
+Would you like to book one of these packages online? Go directly to our **[Booking Page](/booking)**! 📅`;
   }
 
   // Also check if they mentioned an exact service name
   for (const s of services) {
     const sNameNorm = normalizeText(s.name);
     if (messageNorm.includes(sNameNorm)) {
-      return `The price for our "${s.name}" is ₹${s.price}. ${s.description || "It delivers a premium clean and care for your vehicle."}`;
+      return `🏷️ **Pricing for ${s.name}:**
+
+The price for our **${s.name}** is **₹${s.price}**. 
+
+_${s.description || "It delivers a premium clean and care for your vehicle."}_
+
+Would you like to schedule this service? You can book it directly on our **[Booking Page](/booking)**! 📅`;
     }
   }
 
@@ -324,10 +361,15 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
       const offersList = offers
         .map(o => {
           const discountStr = o.discountPercent ? `${o.discountPercent}%` : `₹${o.discountAmount}`;
-          return `- **Code "${o.code}"** (${o.description || "Active Offer"}): Get ${discountStr} off your service!`;
+          return `* **Code "${o.code}"** (${o.description || "Active Offer"}): Get **${discountStr}** off!`;
         })
         .join("\n");
-      return `Here are our current active offers:\n${offersList}\n\nYou can enter the coupon code when booking your service!`;
+      return `🎁 **Active Offers & Promo Codes**
+
+Here are our current active promotions:
+${offersList}
+
+To apply a discount, enter the coupon code when scheduling on the **[Booking Page](/booking)**! 📅`;
     }
   }
 
@@ -347,16 +389,38 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
 
   // 5. Fallback Keyword rules
   if (messageLower.includes("timing") || messageLower.includes("hour") || messageLower.includes("open") || messageLower.includes("close")) {
-    return "Kleenkars is open daily from 10:00 AM to 10:00 PM. Would you like to schedule a wash booking?";
+    return `🕒 **Kleenkars Working Hours**
+
+We are open daily:
+* 📅 **Everyday:** 10:00 AM – 10:00 PM
+
+Would you like help booking a wash slot today? You can book directly on our **[Booking Page](/booking)**! 📅`;
   }
   if (messageLower.includes("location") || messageLower.includes("where") || messageLower.includes("address") || messageLower.includes("find")) {
-    return "We are located at Mustafa Market, Anoop Shahar Rd, Aligarh. We also offer doorstep pickup and drop-off services for your convenience!";
+    return `📍 **Kleenkars Location & Studio**
+
+We are located at:
+* 🏢 **Address:** Mustafa Market, Anoop Shahar Rd, Aligarh
+
+🚗 **Doorstep Service:** We also offer doorstep car pick-up and drop-off services for your convenience! You can opt for this during booking.`;
   }
   if (messageLower.includes("contact") || messageLower.includes("phone") || messageLower.includes("call") || messageLower.includes("mobile") || messageLower.includes("help") || messageLower.includes("support")) {
-    return "You can reach Kleenkars Support directly by calling 8650007661 or WhatsApp us at wa.me/+918650007661. We are happy to answer any of your queries!";
+    return `📞 **Contact Kleenkars Support**
+
+If you need any assistance, feel free to reach out:
+* 📱 **Phone Call:** Call us at **8650007661**
+* 💬 **WhatsApp:** Chat with us at **[wa.me/+918650007661](https://wa.me/+918650007661)**
+
+We are happy to answer any of your queries and help you select the best package!`;
   }
 
-  return "Thank you for contacting Kleenkars Support! I've recorded your query, and a customer representative will follow up with you shortly. You can also call us directly at 8650007661 or message us on WhatsApp at wa.me/+918650007661.";
+  return `✉️ **Query Received**
+
+Thank you for contacting Kleenkars Support! I have recorded your message, and one of our customer care representatives will follow up with you shortly.
+
+If your request is urgent, please feel free to reach out directly:
+* 📞 **Phone:** **8650007661**
+* 💬 **WhatsApp:** **[wa.me/+918650007661](https://wa.me/+918650007661)**`;
 }
 
 export async function POST(request: NextRequest) {
