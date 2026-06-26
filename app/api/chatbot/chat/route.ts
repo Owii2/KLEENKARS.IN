@@ -83,24 +83,123 @@ async function runOfflineFallback(userMessage: string, knowledgeBase: any[], ser
     groupedServices[grp].push(s);
   }
 
-  // Generate complete list of services response
+  // Generate complete list of services response with premium styling and dynamic pricing grouping
   const getServicesListResponse = () => {
-    if (services.length > 0) {
-      const minPrice = Math.min(...services.map(s => s.price));
-      let response = `Our professional car wash services start at just **₹${minPrice}**. Here is our complete price list by category:\n\n`;
-      
-      for (const [groupName, groupServices] of Object.entries(groupedServices)) {
-        response += `**${groupName}**:\n`;
-        for (const s of groupServices) {
-          response += `- ${s.name}: ₹${s.price}\n`;
-        }
-        response += "\n";
+    if (services.length === 0) {
+      return "Our services start at just ₹49 for bikes and ₹149 for standard car washes. You can view all detailing packages and book directly via the 'Book Now' page on our homepage!";
+    }
+
+    // Extract base name and vehicle type
+    const parseServiceName = (name: string) => {
+      let base = name;
+      let vehicle = "";
+      if (name.includes(" - ")) {
+        const parts = name.split(" - ");
+        base = parts[0].trim();
+        vehicle = parts[1].trim();
+      } else if (name.includes(" (Addon)")) {
+        base = name.replace(" (Addon)", "").trim();
+        vehicle = "Addon";
+      }
+      return { base, vehicle };
+    };
+
+    const grouped: Record<string, {
+      description: string;
+      prices: { vehicle: string; price: number }[];
+      isAddon: boolean;
+    }> = {};
+
+    for (const s of services) {
+      const { base, vehicle } = parseServiceName(s.name);
+      const isAddon = s.category?.toLowerCase() === "addon" || 
+                      s.name.toLowerCase().includes("addon") || 
+                      ["tyre shine", "body wax", "hanging car perfume", "dashboard polish", "vacuum"].includes(base.toLowerCase());
+
+      if (!grouped[base]) {
+        grouped[base] = {
+          description: s.description || "",
+          prices: [],
+          isAddon
+        };
       }
       
-      response += "You can book any of these packages directly online! If you need help choosing, please call us at 8650007661.";
-      return response;
+      if (s.description && s.description.length > grouped[base].description.length) {
+        grouped[base].description = s.description;
+      }
+
+      grouped[base].prices.push({
+        vehicle: vehicle || (isAddon ? "Addon" : "General"),
+        price: s.price
+      });
     }
-    return "Our services start at just ₹49 for bikes and ₹149 for standard car washes. You can view all detailing packages and book directly via the 'Book Now' page on our homepage!";
+
+    const formatGroupPrices = (prices: { vehicle: string; price: number }[]) => {
+      const priceMap: Record<number, string[]> = {};
+      for (const p of prices) {
+        if (!priceMap[p.price]) {
+          priceMap[p.price] = [];
+        }
+        if (p.vehicle && p.vehicle !== "Addon" && p.vehicle !== "General") {
+          priceMap[p.price].push(p.vehicle);
+        }
+      }
+
+      const priceKeys = Object.keys(priceMap).map(Number).sort((a, b) => a - b);
+      if (priceKeys.length === 1) {
+        return `₹${priceKeys[0]}`;
+      }
+
+      return priceKeys.map(price => {
+        const vehicles = priceMap[price];
+        if (vehicles.length === 0) {
+          return `₹${price}`;
+        }
+        return `${vehicles.join("/")}: ₹${price}`;
+      }).join(" | ");
+    };
+
+    const washPackages: string[] = [];
+    const detailingPackages: string[] = [];
+    const addons: string[] = [];
+
+    // Sort keys alphabetically to keep layout consistent
+    const sortedBases = Object.keys(grouped).sort();
+
+    for (const baseName of sortedBases) {
+      const group = grouped[baseName];
+      const formattedPrice = formatGroupPrices(group.prices);
+      const descriptionStr = group.description ? `\n  * *${group.description}*` : "";
+      
+      const itemStr = `* **${baseName}**${descriptionStr}\n  * 💰 **Pricing:** ${formattedPrice}`;
+      
+      const nameLower = baseName.toLowerCase();
+      if (group.isAddon) {
+        addons.push(`* **${baseName}**: ${formattedPrice}${group.description ? ` (${group.description})` : ""}`);
+      } else if (nameLower.includes("cabin revive") || nameLower.includes("paint restoration") || nameLower.includes("detailing") || nameLower.includes("coating")) {
+        detailingPackages.push(itemStr);
+      } else {
+        washPackages.push(itemStr);
+      }
+    }
+
+    const minPrice = Math.min(...services.map(s => s.price));
+    let response = `Our professional car wash services start at just **₹${minPrice}**. Here is our complete price list by category:\n\n`;
+    
+    if (washPackages.length > 0) {
+      response += `### 🚗 Wash Packages\n${washPackages.join("\n")}\n\n`;
+    }
+    
+    if (detailingPackages.length > 0) {
+      response += `### 🔍 Detailing Packages\n${detailingPackages.join("\n")}\n\n`;
+    }
+    
+    if (addons.length > 0) {
+      response += `### ➕ Addons & Extras\n${addons.join("\n")}\n\n`;
+    }
+    
+    response += "You can book any of these packages directly online! If you need help choosing, please call us at **8650007661**.";
+    return response;
   };
 
   // Keywords mapping for service groups to assist token-based lookups
