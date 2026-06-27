@@ -566,7 +566,7 @@ const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
                         <td className="p-3 text-gray-200">{row.bookings}</td>
                         <td className="p-3 text-green-400">₹{row.revenue}</td>
                         <td className="p-3 text-yellow-400">₹{row.avgRevenue}</td>
-                        <td className="p-3 text-gray-200">{row.event ? `${row.event.type}` : "-"}</td>
+                        <td className="p-3 text-gray-200">{row.event ? `${row.event.description || row.event.type}` : "-"}</td>
                         <td className="p-3 text-gray-200">{row.weather ? `${row.weather.temperature}°C ${row.weather.condition}` : "-"}</td>
                       </tr>
                     ))}
