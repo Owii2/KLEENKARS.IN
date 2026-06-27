@@ -36,9 +36,92 @@ async function fetchWithTimeout(url: string, options: any = {}, timeoutMs = 2000
   }
 }
 
+// Format a JS Date object to YYYY-MM-DD in Asia/Kolkata timezone
+function formatDateKolkata(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find(p => p.type === "year")?.value;
+  const month = parts.find(p => p.type === "month")?.value;
+  const day = parts.find(p => p.type === "day")?.value;
+  return `${year}-${month}-${day}`;
+}
+
+// Get the current local date in Asia/Kolkata as a UTC Date object at midnight
+function getKolkataToday(): Date {
+  const now = new Date();
+  const dateStr = formatDateKolkata(now);
+  return new Date(`${dateStr}T00:00:00.000Z`);
+}
+
+// Resolve weekday and hour bucket in a timezone-robust way
+function getDayAndHour(
+  dateStr?: string | null, // YYYY-MM-DD
+  timeStr?: string | null, // HH:mm or hh:mm AM/PM
+  createdAt?: Date | null
+) {
+  // 1. If we have dateStr, parse it directly to avoid server timezone shifts
+  if (dateStr) {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const yr = parseInt(parts[0]);
+      const mo = parseInt(parts[1]);
+      const dy = parseInt(parts[2]);
+      
+      const utcDate = new Date(Date.UTC(yr, mo - 1, dy));
+      const day = weekdayNames[utcDate.getUTCDay()];
+
+      let hour = 12; // default
+      let hasValidTime = false;
+      if (timeStr) {
+        const match = timeStr.match(/(\d+):(\d+)(?:\s*(AM|PM))?/i);
+        if (match) {
+          hour = parseInt(match[1]);
+          const amp = match[3];
+          if (amp) {
+            if (amp.toUpperCase() === "PM" && hour < 12) hour += 12;
+            if (amp.toUpperCase() === "AM" && hour === 12) hour = 0;
+          }
+          hasValidTime = true;
+        }
+      }
+
+      if (!hasValidTime && createdAt) {
+        const kolkataParts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "Asia/Kolkata",
+          hour: "numeric",
+          hourCycle: "h23",
+        }).formatToParts(new Date(createdAt));
+        hour = parseInt(kolkataParts.find(p => p.type === "hour")?.value || "12");
+      }
+
+      return { day, hour };
+    }
+  }
+
+  // 2. Fall back to createdAt converted to Asia/Kolkata timezone
+  if (createdAt) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      weekday: "long",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).formatToParts(new Date(createdAt));
+    
+    const day = parts.find(p => p.type === "weekday")?.value || "Monday";
+    const hour = parseInt(parts.find(p => p.type === "hour")?.value || "12");
+    return { day, hour };
+  }
+
+  return { day: "Monday", hour: 12 };
+}
+
 async function syncOnlineData(weekDates: string[]) {
-  const today = new Date();
-  const currentYear = today.getFullYear();
+  const today = getKolkataToday();
+  const currentYear = today.getUTCFullYear();
 
   // 1. Sync public holidays (Events) for the current year if not already cached
   try {
@@ -130,25 +213,25 @@ async function syncOnlineData(weekDates: string[]) {
 
 export async function GET() {
   try {
-    // Generate dates corresponding to Monday-Sunday of the current week
+    // Generate dates corresponding to Monday-Sunday of the current week in Asia/Kolkata
     const orderedWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const today = new Date();
-    const currentDay = today.getDay(); // 0 is Sunday, 1-6
+    const today = getKolkataToday();
+    const currentDay = today.getUTCDay(); // 0 is Sunday, 1-6
     const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
     const monday = new Date(today);
-    monday.setDate(today.getDate() + mondayOffset);
+    monday.setUTCDate(today.getUTCDate() + mondayOffset);
 
     const weekDates: string[] = [];
     const dateByDayName: Record<string, string> = {};
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
+      d.setUTCDate(monday.getUTCDate() + i);
       const dateStr = d.toISOString().split("T")[0];
       weekDates.push(dateStr);
       dateByDayName[orderedWeek[i]] = dateStr;
     }
 
-    // Attempt online sync in the background/parallel
+    // Attempt online sync in parallel / cached check
     await syncOnlineData(weekDates);
 
     // Fetch data from database
@@ -163,55 +246,14 @@ export async function GET() {
       prisma.weatherLog.findMany({ select: { date: true, temperature: true, condition: true } }),
     ]);
 
-    const eventMap = new Map(events.map(e => [e.date.toISOString().slice(0, 10), e]));
-    const weatherMap = new Map(weather.map(w => [w.date.toISOString().slice(0, 10), w]));
+    const eventMap = new Map(events.map(e => [formatDateKolkata(e.date), e]));
+    const weatherMap = new Map(weather.map(w => [formatDateKolkata(w.date), w]));
 
     const agg: Record<string, { bookings: number; revenue: number }> = {};
 
     // 1. Process Bookings
     for (const b of bookings) {
-      let yr = 2026, mo = 6, dy = 27;
-      let hasValidDate = false;
-      if (b.bookingDate) {
-        const parts = b.bookingDate.split("-");
-        if (parts.length === 3) {
-          yr = parseInt(parts[0]);
-          mo = parseInt(parts[1]);
-          dy = parseInt(parts[2]);
-          hasValidDate = true;
-        }
-      }
-
-      let dateObj: Date;
-      if (hasValidDate) {
-        dateObj = new Date(Date.UTC(yr, mo - 1, dy));
-      } else if (b.createdAt) {
-        dateObj = new Date(b.createdAt);
-      } else {
-        continue;
-      }
-
-      const day = weekdayNames[dateObj.getUTCDay()];
-
-      let hour = 12; // default
-      let hasValidTime = false;
-      if (b.bookingTime) {
-        const match = b.bookingTime.match(/(\d+):(\d+)(?:\s*(AM|PM))?/i);
-        if (match) {
-          hour = parseInt(match[1]);
-          const amp = match[3];
-          if (amp) {
-            if (amp.toUpperCase() === "PM" && hour < 12) hour += 12;
-            if (amp.toUpperCase() === "AM" && hour === 12) hour = 0;
-          }
-          hasValidTime = true;
-        }
-      }
-
-      if (!hasValidTime && b.createdAt) {
-        hour = new Date(b.createdAt).getUTCHours();
-      }
-
+      const { day, hour } = getDayAndHour(b.bookingDate, b.bookingTime, b.createdAt);
       const bucket = timeBuckets.find(bucket => bucket.check(hour))?.name || "Unknown";
       const key = `${day}|${bucket}`;
       if (!agg[key]) agg[key] = { bookings: 0, revenue: 0 };
@@ -221,48 +263,7 @@ export async function GET() {
 
     // 2. Process Transactions
     for (const t of transactions) {
-      let yr = 2026, mo = 6, dy = 27;
-      let hasValidDate = false;
-      if (t.date) {
-        const parts = t.date.split("-");
-        if (parts.length === 3) {
-          yr = parseInt(parts[0]);
-          mo = parseInt(parts[1]);
-          dy = parseInt(parts[2]);
-          hasValidDate = true;
-        }
-      }
-
-      let dateObj: Date;
-      if (hasValidDate) {
-        dateObj = new Date(Date.UTC(yr, mo - 1, dy));
-      } else if (t.createdAt) {
-        dateObj = new Date(t.createdAt);
-      } else {
-        continue;
-      }
-
-      const day = weekdayNames[dateObj.getUTCDay()];
-
-      let hour = 12; // default
-      let hasValidTime = false;
-      if (t.time) {
-        const match = t.time.match(/(\d+):(\d+)(?:\s*(AM|PM))?/i);
-        if (match) {
-          hour = parseInt(match[1]);
-          const amp = match[3];
-          if (amp) {
-            if (amp.toUpperCase() === "PM" && hour < 12) hour += 12;
-            if (amp.toUpperCase() === "AM" && hour === 12) hour = 0;
-          }
-          hasValidTime = true;
-        }
-      }
-
-      if (!hasValidTime && t.createdAt) {
-        hour = new Date(t.createdAt).getUTCHours();
-      }
-
+      const { day, hour } = getDayAndHour(t.date, t.time, t.createdAt);
       const bucket = timeBuckets.find(bucket => bucket.check(hour))?.name || "Unknown";
       const key = `${day}|${bucket}`;
       if (!agg[key]) agg[key] = { bookings: 0, revenue: 0 };
