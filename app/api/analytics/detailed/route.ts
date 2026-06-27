@@ -282,6 +282,7 @@ export async function GET() {
         const wthr = weatherMap.get(rowDateStr) || null;
         data.push({
           day,
+          date: rowDateStr,
           timeOfDay: bucket.name,
           bookings: stats.bookings,
           revenue: stats.revenue,
