@@ -63,60 +63,49 @@ function getDayAndHour(
   timeStr?: string | null, // HH:mm or hh:mm AM/PM
   createdAt?: Date | null
 ) {
-  // 1. If we have dateStr, parse it directly to avoid server timezone shifts
+  let resolvedDateStr = "";
+
   if (dateStr) {
     const parts = dateStr.split("-");
     if (parts.length === 3) {
-      const yr = parseInt(parts[0]);
-      const mo = parseInt(parts[1]);
-      const dy = parseInt(parts[2]);
-      
-      const utcDate = new Date(Date.UTC(yr, mo - 1, dy));
-      const day = weekdayNames[utcDate.getUTCDay()];
-
-      let hour = 12; // default
-      let hasValidTime = false;
-      if (timeStr) {
-        const match = timeStr.match(/(\d+):(\d+)(?:\s*(AM|PM))?/i);
-        if (match) {
-          hour = parseInt(match[1]);
-          const amp = match[3];
-          if (amp) {
-            if (amp.toUpperCase() === "PM" && hour < 12) hour += 12;
-            if (amp.toUpperCase() === "AM" && hour === 12) hour = 0;
-          }
-          hasValidTime = true;
-        }
-      }
-
-      if (!hasValidTime && createdAt) {
-        const kolkataParts = new Intl.DateTimeFormat("en-US", {
-          timeZone: "Asia/Kolkata",
-          hour: "numeric",
-          hourCycle: "h23",
-        }).formatToParts(new Date(createdAt));
-        hour = parseInt(kolkataParts.find(p => p.type === "hour")?.value || "12");
-      }
-
-      return { day, hour };
+      resolvedDateStr = dateStr;
     }
   }
 
-  // 2. Fall back to createdAt converted to Asia/Kolkata timezone
-  if (createdAt) {
-    const parts = new Intl.DateTimeFormat("en-US", {
+  if (!resolvedDateStr && createdAt) {
+    resolvedDateStr = formatDateKolkata(new Date(createdAt));
+  }
+
+  if (!resolvedDateStr) {
+    resolvedDateStr = "2026-06-22"; // default fallback
+  }
+
+  // Determine hour
+  let hour = 12; // default
+  let hasValidTime = false;
+  if (timeStr) {
+    const match = timeStr.match(/(\d+):(\d+)(?:\s*(AM|PM))?/i);
+    if (match) {
+      hour = parseInt(match[1]);
+      const amp = match[3];
+      if (amp) {
+        if (amp.toUpperCase() === "PM" && hour < 12) hour += 12;
+        if (amp.toUpperCase() === "AM" && hour === 12) hour = 0;
+      }
+      hasValidTime = true;
+    }
+  }
+
+  if (!hasValidTime && createdAt) {
+    const kolkataParts = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Kolkata",
-      weekday: "long",
       hour: "numeric",
       hourCycle: "h23",
     }).formatToParts(new Date(createdAt));
-    
-    const day = parts.find(p => p.type === "weekday")?.value || "Monday";
-    const hour = parseInt(parts.find(p => p.type === "hour")?.value || "12");
-    return { day, hour };
+    hour = parseInt(kolkataParts.find(p => p.type === "hour")?.value || "12");
   }
 
-  return { day: "Monday", hour: 12 };
+  return { dateStr: resolvedDateStr, hour };
 }
 
 async function syncOnlineData(weekDates: string[]) {
@@ -253,9 +242,9 @@ export async function GET() {
 
     // 1. Process Bookings
     for (const b of bookings) {
-      const { day, hour } = getDayAndHour(b.bookingDate, b.bookingTime, b.createdAt);
+      const { dateStr, hour } = getDayAndHour(b.bookingDate, b.bookingTime, b.createdAt);
       const bucket = timeBuckets.find(bucket => bucket.check(hour))?.name || "Unknown";
-      const key = `${day}|${bucket}`;
+      const key = `${dateStr}|${bucket}`;
       if (!agg[key]) agg[key] = { bookings: 0, revenue: 0 };
       agg[key].bookings += 1;
       agg[key].revenue += b.totalCost ?? 0;
@@ -263,9 +252,9 @@ export async function GET() {
 
     // 2. Process Transactions
     for (const t of transactions) {
-      const { day, hour } = getDayAndHour(t.date, t.time, t.createdAt);
+      const { dateStr, hour } = getDayAndHour(t.date, t.time, t.createdAt);
       const bucket = timeBuckets.find(bucket => bucket.check(hour))?.name || "Unknown";
-      const key = `${day}|${bucket}`;
+      const key = `${dateStr}|${bucket}`;
       if (!agg[key]) agg[key] = { bookings: 0, revenue: 0 };
       agg[key].bookings += 1;
       agg[key].revenue += t.finalAmount ?? t.amount ?? 0;
