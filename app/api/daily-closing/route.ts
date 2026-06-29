@@ -50,120 +50,93 @@ export async function POST(req: Request) {
     let cashClosingAfterExpenses = 0;
     let dailyWageDeductions = 0;
     let onlinePaymentCollected = 0;
+    let today = new Date().toLocaleDateString("en-CA");
 
     try {
       const body = await req.json();
+      if (body.date) {
+        today = body.date;
+      }
       cashClosingAfterExpenses = Number(body.cashClosingAfterExpenses || 0);
       dailyWageDeductions = Number(body.dailyWageDeductions || 0);
       onlinePaymentCollected = Number(body.onlinePaymentCollected || 0);
-    } catch (e) {
+    } catch {
       // Empty body allowed
     }
 
-    const today =
-      new Date().toISOString().split("T")[0];
-
-    const bookings =
-      await prisma.booking.findMany();
-
-    const expenses =
-      await prisma.expense.findMany();
-
-    const totalRevenue =
-      bookings.reduce(
-        (sum, booking) =>
-          sum + booking.totalCost,
-        0
-      );
-
-    const totalExpenses =
-      expenses.reduce(
-        (sum, expense) =>
-          sum + expense.amount,
-        0
-      );
-
-    const cashRevenue =
-      bookings
-        .filter(
-          (booking) =>
-            booking.paymentMode ===
-            "Cash"
-        )
-        .reduce(
-          (sum, booking) =>
-            sum + booking.totalCost,
-          0
-        );
-
-    const upiRevenue =
-      bookings
-        .filter(
-          (booking) =>
-            booking.paymentMode ===
-            "UPI"
-        )
-        .reduce(
-          (sum, booking) =>
-            sum + booking.totalCost,
-          0
-        );
-
-    const netProfit =
-      totalRevenue - totalExpenses;
-
-    const closing =
-      await prisma.dailyClosing.upsert({
-
-        where: {
-          date: today,
+    const bookings = await prisma.booking.findMany({
+      where: {
+        bookingDate: today,
+        status: {
+          not: "Cancelled",
         },
+      },
+    });
 
-        update: {
+    const parts = today.split("-");
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const startDate = new Date(y, m, d, 0, 0, 0, 0);
+    const endDate = new Date(y, m, d, 23, 59, 59, 999);
 
-          totalRevenue,
-
-          totalExpenses,
-
-          netProfit,
-
-          totalBookings:
-            bookings.length,
-
-          cashRevenue,
-
-          upiRevenue,
-
-          cashClosingAfterExpenses,
-          dailyWageDeductions,
-          onlinePaymentCollected,
-
+    const expenses = await prisma.expense.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
         },
+      },
+    });
 
-        create: {
+    const totalRevenue = bookings.reduce(
+      (sum, booking) => sum + (booking.totalCost || 0),
+      0
+    );
 
-          date: today,
+    const totalExpenses = expenses.reduce(
+      (sum, expense) => sum + (expense.amount || 0),
+      0
+    );
 
-          totalRevenue,
+    const cashRevenue = bookings
+      .filter((booking) => booking.paymentMode === "Cash")
+      .reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
 
-          totalExpenses,
+    const upiRevenue = bookings
+      .filter((booking) => booking.paymentMode === "UPI")
+      .reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
 
-          netProfit,
+    const netProfit = totalRevenue - totalExpenses;
 
-          totalBookings:
-            bookings.length,
-
-          cashRevenue,
-
-          upiRevenue,
-
-          cashClosingAfterExpenses,
-          dailyWageDeductions,
-          onlinePaymentCollected,
-
-        },
-
-      });
+    const closing = await prisma.dailyClosing.upsert({
+      where: {
+        date: today,
+      },
+      update: {
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        totalBookings: bookings.length,
+        cashRevenue,
+        upiRevenue,
+        cashClosingAfterExpenses,
+        dailyWageDeductions,
+        onlinePaymentCollected,
+      },
+      create: {
+        date: today,
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        totalBookings: bookings.length,
+        cashRevenue,
+        upiRevenue,
+        cashClosingAfterExpenses,
+        dailyWageDeductions,
+        onlinePaymentCollected,
+      },
+    });
 
     return NextResponse.json({
       success: true,

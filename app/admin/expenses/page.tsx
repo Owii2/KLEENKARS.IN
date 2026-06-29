@@ -1189,6 +1189,7 @@ export default function ExpensePage() {
                           <>
                             <Bar dataKey="revenue" fill="#10b981" name="Revenue" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="expense" fill="#ef4444" name="Expense" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="profit" fill="#3b82f6" name="Net Profit" radius={[4, 4, 0, 0]} />
                           </>
                         ) : (
                           <Bar dataKey="amount" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -1214,6 +1215,9 @@ export default function ExpensePage() {
                         <div className="text-right text-xs">
                           <div className="text-green-400 font-bold">Rev: Rs. {row.revenue}</div>
                           <div className="text-red-400 font-bold">Exp: Rs. {row.expense}</div>
+                          <div className={`${(row.profit || 0) >= 0 ? "text-blue-400" : "text-amber-500"} font-bold`}>
+                            Profit: Rs. {row.profit || 0}
+                          </div>
                         </div>
                       ) : (
                         <span className="font-bold text-white">Rs. {row.amount}</span>

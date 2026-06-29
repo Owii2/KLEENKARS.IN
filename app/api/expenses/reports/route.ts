@@ -88,13 +88,35 @@ export async function GET(req: Request) {
     }
 
     if (type === "profit-vs-expense") {
-      // Fetch DailyClosings for revenue context
-      const closings = await prisma.dailyClosing.findMany({
+      // Fetch bookings for the selected year
+      const bookings = await prisma.booking.findMany({
+        where: {
+          bookingDate: {
+            startsWith: `${year}-`,
+          },
+          status: {
+            not: "Cancelled",
+          },
+        },
+        select: {
+          bookingDate: true,
+          totalCost: true,
+        },
+      });
+
+      // Fetch expenses for the selected year
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+      const expenses = await prisma.expense.findMany({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
         select: {
           date: true,
-          totalRevenue: true,
-          totalExpenses: true,
-          netProfit: true,
+          amount: true,
         },
       });
 
@@ -106,15 +128,28 @@ export async function GET(req: Request) {
         profit: 0,
       }));
 
-      closings.forEach((c) => {
-        // DailyClosing date format: YYYY-MM-DD
-        const parts = c.date.split("-");
-        if (parts.length === 3 && parseInt(parts[0], 10) === year) {
+      // Aggregate bookings (revenue)
+      bookings.forEach((b) => {
+        const parts = b.bookingDate.split("-");
+        if (parts.length === 3) {
           const m = parseInt(parts[1], 10) - 1;
-          monthlySummary[m].revenue += c.totalRevenue;
-          monthlySummary[m].expense += c.totalExpenses;
-          monthlySummary[m].profit += c.netProfit;
+          if (m >= 0 && m < 12) {
+            monthlySummary[m].revenue += b.totalCost || 0;
+          }
         }
+      });
+
+      // Aggregate expenses
+      expenses.forEach((e) => {
+        const m = new Date(e.date).getMonth();
+        if (m >= 0 && m < 12) {
+          monthlySummary[m].expense += e.amount || 0;
+        }
+      });
+
+      // Calculate profit
+      monthlySummary.forEach((m) => {
+        m.profit = m.revenue - m.expense;
       });
 
       return NextResponse.json({ success: true, report: monthlySummary });
