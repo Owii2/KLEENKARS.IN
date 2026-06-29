@@ -73,6 +73,12 @@ export async function POST(req: Request) {
       },
     });
 
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        date: today,
+      },
+    });
+
     const parts = today.split("-");
     const y = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10) - 1;
@@ -89,25 +95,45 @@ export async function POST(req: Request) {
       },
     });
 
-    const totalRevenue = bookings.reduce(
+    const bookingRevenue = bookings.reduce(
       (sum, booking) => sum + (booking.totalCost || 0),
       0
     );
+
+    const transactionRevenue = transactions.reduce(
+      (sum, tx) => sum + (tx.finalAmount ?? tx.amount ?? 0),
+      0
+    );
+
+    const totalRevenue = bookingRevenue + transactionRevenue;
 
     const totalExpenses = expenses.reduce(
       (sum, expense) => sum + (expense.amount || 0),
       0
     );
 
-    const cashRevenue = bookings
+    const bookingCash = bookings
       .filter((booking) => booking.paymentMode === "Cash")
       .reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
 
-    const upiRevenue = bookings
+    const transactionCash = transactions
+      .filter((tx) => tx.paymentMode === "Cash")
+      .reduce((sum, tx) => sum + (tx.finalAmount ?? tx.amount ?? 0), 0);
+
+    const cashRevenue = bookingCash + transactionCash;
+
+    const bookingUpi = bookings
       .filter((booking) => booking.paymentMode === "UPI")
       .reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
 
+    const transactionUpi = transactions
+      .filter((tx) => tx.paymentMode === "UPI")
+      .reduce((sum, tx) => sum + (tx.finalAmount ?? tx.amount ?? 0), 0);
+
+    const upiRevenue = bookingUpi + transactionUpi;
+
     const netProfit = totalRevenue - totalExpenses;
+    const totalCount = bookings.length + transactions.length;
 
     const closing = await prisma.dailyClosing.upsert({
       where: {
@@ -117,7 +143,7 @@ export async function POST(req: Request) {
         totalRevenue,
         totalExpenses,
         netProfit,
-        totalBookings: bookings.length,
+        totalBookings: totalCount,
         cashRevenue,
         upiRevenue,
         cashClosingAfterExpenses,
@@ -129,7 +155,7 @@ export async function POST(req: Request) {
         totalRevenue,
         totalExpenses,
         netProfit,
-        totalBookings: bookings.length,
+        totalBookings: totalCount,
         cashRevenue,
         upiRevenue,
         cashClosingAfterExpenses,

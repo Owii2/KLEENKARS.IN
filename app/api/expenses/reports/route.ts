@@ -104,6 +104,20 @@ export async function GET(req: Request) {
         },
       });
 
+      // Fetch transactions for the selected year
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          date: {
+            startsWith: `${year}-`,
+          },
+        },
+        select: {
+          date: true,
+          amount: true,
+          finalAmount: true,
+        },
+      });
+
       // Fetch expenses for the selected year
       const startDate = new Date(year, 0, 1);
       const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
@@ -135,6 +149,17 @@ export async function GET(req: Request) {
           const m = parseInt(parts[1], 10) - 1;
           if (m >= 0 && m < 12) {
             monthlySummary[m].revenue += b.totalCost || 0;
+          }
+        }
+      });
+
+      // Aggregate transactions (revenue)
+      transactions.forEach((t) => {
+        const parts = t.date.split("-");
+        if (parts.length === 3) {
+          const m = parseInt(parts[1], 10) - 1;
+          if (m >= 0 && m < 12) {
+            monthlySummary[m].revenue += t.finalAmount ?? t.amount ?? 0;
           }
         }
       });
