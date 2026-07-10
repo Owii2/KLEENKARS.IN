@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { jsPDF } from "jspdf";
 import { 
@@ -154,6 +155,7 @@ export default function ManagerPage() {
   
   // Navigation State
   const [activeTab, setActiveTab] = useState("overview");
+  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
 
   // Core Data States
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -280,6 +282,18 @@ export default function ManagerPage() {
   };
 
   useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUser(data.employee || null);
+        }
+      } catch (e) {
+        console.error("Failed to fetch current user profile", e);
+      }
+    };
+    fetchUser();
     fetchData();
   }, []);
 
@@ -954,6 +968,14 @@ export default function ManagerPage() {
               <p className="text-[10px] text-gray-500">Rohini Center</p>
             </div>
           </div>
+          {currentUser?.role === "admin" && (
+            <Link
+              href="/admin"
+              className="w-full bg-blue-600/15 hover:bg-blue-600 border border-blue-500/20 transition text-blue-400 hover:text-white font-bold p-3.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10"
+            >
+              Back to Admin Panel
+            </Link>
+          )}
           <button
             onClick={handleLogout}
             className="w-full bg-red-600/10 hover:bg-red-650 transition text-red-500 hover:text-white font-bold p-3.5 rounded-xl text-sm flex items-center justify-center gap-2"

@@ -83,6 +83,15 @@ export default function Sidebar() {
         <Link href="/admin/blog" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Blog Posts
         </Link>
+        <div className="pt-4 mt-4 border-t border-white/10 space-y-3">
+          <p className="text-[10px] text-gray-500 tracking-widest font-semibold uppercase px-4">Staff Consoles</p>
+          <Link href="/manager" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+            Manager Console
+          </Link>
+          <Link href="/staff" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
+            Staff Console
+          </Link>
+        </div>
       </nav>
 
       <div className="mt-8 border-t border-white/10 pt-6">

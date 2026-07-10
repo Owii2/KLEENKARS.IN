@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { 
   Users, 
   ClipboardList, 
@@ -105,6 +106,7 @@ const ActiveTimer = ({ startedAt }: { startedAt: string | null | undefined }) =>
 export default function StaffPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [adminRoleView, setAdminRoleView] = useState<string>("supervisor");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -211,8 +213,8 @@ export default function StaffPage() {
         const bookingData = await bookingRes.json();
         setBookings(bookingData.bookings || []);
 
-        // If supervisor, fetch employees list, attendance logs, and active services
-        if (authData.employee.role === "supervisor") {
+        // If supervisor or admin, fetch employees list, attendance logs, and active services
+        if (authData.employee.role === "supervisor" || authData.employee.role === "admin") {
           const [empRes, attRes, servRes] = await Promise.all([
             fetch("/api/employees"),
             fetch("/api/attendance"),
@@ -2124,7 +2126,8 @@ export default function StaffPage() {
 
   const renderDashboard = () => {
     if (!employee) return <div className="text-gray-400">Loading...</div>;
-    switch (employee.role) {
+    const activeRole = employee.role === "admin" ? adminRoleView : employee.role;
+    switch (activeRole) {
       case "washer":
       case "detailer":
         return <WasherDashboard />;
@@ -2141,7 +2144,37 @@ export default function StaffPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-900 to-black p-6 text-white">
-      <h1 className="text-4xl font-bold text-red-500 mb-8">Staff Dashboard</h1>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-4xl font-bold text-red-500 font-black tracking-wide">Staff Dashboard</h1>
+          {employee?.role === "admin" && (
+            <p className="text-xs text-blue-400 mt-1 font-mono uppercase tracking-wider">Logged in as Administrator</p>
+          )}
+        </div>
+        {employee?.role === "admin" && (
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2 rounded-2xl">
+              <span className="text-xs text-gray-400 px-2 font-semibold uppercase">View As:</span>
+              <select
+                value={adminRoleView}
+                onChange={(e) => setAdminRoleView(e.target.value)}
+                className="bg-black border border-white/15 text-white rounded-xl py-1.5 px-3.5 text-sm focus:outline-none focus:border-red-500 cursor-pointer"
+              >
+                <option value="supervisor">Supervisor</option>
+                <option value="detailer">Detailer / Washer</option>
+                <option value="pickup_driver">Pickup Driver</option>
+                <option value="cashier">Cashier</option>
+              </select>
+            </div>
+            <Link
+              href="/admin"
+              className="bg-blue-600 hover:bg-blue-700 transition text-white px-5 py-2.5 rounded-2xl text-sm font-semibold border border-blue-500/20 shadow-lg shadow-blue-900/20"
+            >
+              Back to Admin Panel
+            </Link>
+          </div>
+        )}
+      </div>
       {renderDashboard()}
     </div>
   );
