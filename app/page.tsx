@@ -464,6 +464,9 @@ export default function HomePage() {
               <Link href="/franchise" className="hover:text-red-500 transition-colors duration-200">
                 Franchise
               </Link>
+              <Link href="/customer/login" className="hover:text-red-500 transition-colors duration-200">
+                Customer Login
+              </Link>
               <Link href="/login" className="hover:text-red-500 transition-colors duration-200">
                 Staff Login
               </Link>

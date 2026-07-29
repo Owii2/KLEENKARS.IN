@@ -22,8 +22,9 @@ export default function Navbar() {
 
   const links = [
     { name: "Home", href: "/" },
-    { name: "Book", href: "/booking" },
-    customer ? { name: "Dashboard", href: "/customer/dashboard" } : { name: "Login", href: "/customer/login" },
+    { name: "Services", href: "/services" },
+    { name: "Packages", href: "/packages" },
+    customer ? { name: "Customer Dashboard", href: "/customer/dashboard" } : { name: "Customer Login", href: "/customer/login" },
     { name: "Staff Login", href: "/login" },
   ];
 
