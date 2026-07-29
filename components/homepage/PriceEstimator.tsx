@@ -7,20 +7,22 @@ interface VehicleTier {
   id: string;
   name: string;
   example: string;
-  multiplier: number;
+  variantKeywords: string[]; // ["hatchback"], ["sedan"], ["suv", "muv"], ["luxury", "suv"]
 }
 
 interface Treatment {
   id: string;
   name: string;
   description: string;
-  basePrice: number; // Hatchback base
+  searchKeywords: string[];
+  defaultPrices: Record<string, number>; // fallback per vehicle tier
 }
 
 interface Addon {
   id: string;
   name: string;
-  price: number;
+  searchKeywords: string[];
+  defaultPrice: number;
 }
 
 interface ApiService {
@@ -32,105 +34,119 @@ interface ApiService {
 }
 
 const VEHICLE_TIERS: VehicleTier[] = [
-  { id: "hatchback", name: "Hatchback / Compact", example: "Swift, Baleno, i20, Tiago", multiplier: 1.0 },
-  { id: "sedan", name: "Sedan / Executive", example: "City, Verna, Ciaz, Slavia", multiplier: 1.25 },
-  { id: "suv", name: "SUV / MUV", example: "Creta, Seltos, Thar, Fortuner, Innova", multiplier: 1.45 },
-  { id: "luxury", name: "Luxury / Super SUV", example: "BMW 3/5, Audi Q5, Mercedes C/E", multiplier: 1.75 },
+  { id: "hatchback", name: "Hatchback / Compact", example: "Swift, Baleno, i20, Tiago", variantKeywords: ["hatchback", "compact"] },
+  { id: "sedan", name: "Sedan / Executive", example: "City, Verna, Ciaz, Slavia", variantKeywords: ["sedan"] },
+  { id: "suv", name: "SUV / MUV", example: "Creta, Seltos, Thar, Fortuner, Innova", variantKeywords: ["suv", "muv"] },
+  { id: "luxury", name: "Luxury / Super SUV", example: "BMW 3/5, Audi Q5, Mercedes C/E", variantKeywords: ["luxury", "suv"] },
 ];
 
-const DEFAULT_TREATMENTS: Treatment[] = [
+const TREATMENTS: Treatment[] = [
   {
     id: "wash",
     name: "Premium Foam Wash & Vacuum",
     description: "pH-neutral foam bath, high-pressure rinse, rim clean & interior vacuum.",
-    basePrice: 399,
+    searchKeywords: ["premium wash", "foam wash", "wash"],
+    defaultPrices: { hatchback: 299, sedan: 349, suv: 399, luxury: 499 },
   },
   {
     id: "interior",
     name: "Interior Deep Clean & Steam Spa",
     description: "140°C steam extraction, leather conditioning & AC duct sanitization.",
-    basePrice: 1499,
+    searchKeywords: ["interior deep clean", "cabin revive", "interior"],
+    defaultPrices: { hatchback: 1299, sedan: 1299, suv: 1499, luxury: 1799 },
   },
   {
     id: "correction",
     name: "Dual-Action Paint Correction",
     description: "Multi-stage machine polishing removing 85%+ swirl marks & oxidation.",
-    basePrice: 2999,
+    searchKeywords: ["paint correction", "paint restoration", "polishing"],
+    defaultPrices: { hatchback: 1499, sedan: 1499, suv: 1799, luxury: 2199 },
   },
   {
     id: "ceramic",
     name: "9H Nano Ceramic Coating",
     description: "Glassy hydrophobic paint shield with 3-year multi-layer protection.",
-    basePrice: 8999,
+    searchKeywords: ["ceramic coating", "ceramic", "nano coating"],
+    defaultPrices: { hatchback: 5999, sedan: 7499, suv: 8999, luxury: 10999 },
   },
   {
     id: "ppf",
     name: "TPU Paint Protection Film (PPF)",
     description: "Self-healing clear film protecting paint from stone chips & scratches.",
-    basePrice: 45000,
+    searchKeywords: ["ppf protection", "ppf", "paint protection film"],
+    defaultPrices: { hatchback: 35000, sedan: 40000, suv: 45000, luxury: 55000 },
   },
 ];
 
-const DEFAULT_ADDONS: Addon[] = [
-  { id: "headlight", name: "Headlight UV Restoration", price: 499 },
-  { id: "engine", name: "Engine Bay Detailing & Dressing", price: 399 },
-  { id: "windshield", name: "Windshield Hydrophobic Coating", price: 799 },
+const ADDONS: Addon[] = [
+  { id: "headlight", name: "Headlight UV Restoration", searchKeywords: ["headlight"], defaultPrice: 499 },
+  { id: "engine", name: "Engine Bay Detailing & Dressing", searchKeywords: ["engine"], defaultPrice: 399 },
+  { id: "windshield", name: "Windshield Hydrophobic Coating", searchKeywords: ["windshield", "rain"], defaultPrice: 799 },
 ];
 
 export function PriceEstimator() {
   const [selectedVehicle, setSelectedVehicle] = useState<string>("hatchback");
   const [selectedTreatment, setSelectedTreatment] = useState<string>("wash");
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
-  const [treatments, setTreatments] = useState<Treatment[]>(DEFAULT_TREATMENTS);
-  const [addons, setAddons] = useState<Addon[]>(DEFAULT_ADDONS);
+  const [dbServices, setDbServices] = useState<ApiService[]>([]);
 
-  // Sync pricing dynamically with admin-managed database services
+  // Fetch real-time active services from database
   useEffect(() => {
     fetch("/api/services")
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.services)) {
-          const dbServices: ApiService[] = data.services.filter((s: ApiService) => s.isActive);
-
-          setTreatments((prev) =>
-            prev.map((t) => {
-              const match = dbServices.find((s) => {
-                const n = s.name.toLowerCase();
-                if (t.id === "wash") return n.includes("wash") || n.includes("foam");
-                if (t.id === "interior") return n.includes("interior") || n.includes("cabin");
-                if (t.id === "correction") return n.includes("correction") || n.includes("restoration") || n.includes("polish");
-                if (t.id === "ceramic") return n.includes("ceramic") || n.includes("coating");
-                if (t.id === "ppf") return n.includes("ppf") || n.includes("film");
-                return false;
-              });
-              return match ? { ...t, basePrice: match.price } : t;
-            })
-          );
-
-          setAddons((prev) =>
-            prev.map((a) => {
-              const match = dbServices.find((s) => {
-                const n = s.name.toLowerCase();
-                if (a.id === "headlight") return n.includes("headlight");
-                if (a.id === "engine") return n.includes("engine");
-                if (a.id === "windshield") return n.includes("windshield") || n.includes("rain");
-                return s.category === "Addon" && n.includes(a.name.toLowerCase());
-              });
-              return match ? { ...a, price: match.price } : a;
-            })
-          );
+          setDbServices(data.services.filter((s: ApiService) => s.isActive));
         }
       })
       .catch(console.error);
   }, []);
 
   const currentTier = VEHICLE_TIERS.find((v) => v.id === selectedVehicle) || VEHICLE_TIERS[0];
-  const currentTreatment = treatments.find((t) => t.id === selectedTreatment) || treatments[0];
+  const currentTreatmentObj = TREATMENTS.find((t) => t.id === selectedTreatment) || TREATMENTS[0];
 
-  const calculatedPackagePrice = Math.round(currentTreatment.basePrice * currentTier.multiplier);
+  // Helper to find exact database service price for current vehicle + treatment
+  const getExactPrice = (treatment: Treatment, vehicleTierId: string): number => {
+    if (dbServices.length > 0) {
+      const tierObj = VEHICLE_TIERS.find((v) => v.id === vehicleTierId);
+      const tierKeywords = tierObj ? tierObj.variantKeywords : [vehicleTierId];
+
+      // Try exact name match: e.g. "Premium Wash - Hatchback" or "Premium Wash - SUV/MUV"
+      const matchedDbSvc = dbServices.find((s) => {
+        const nameLower = s.name.toLowerCase();
+        const matchesTreatment = treatment.searchKeywords.some((kw) => nameLower.includes(kw));
+        const matchesVehicle = tierKeywords.some((vk) => nameLower.includes(vk));
+        return matchesTreatment && matchesVehicle;
+      });
+
+      if (matchedDbSvc) {
+        return matchedDbSvc.price;
+      }
+
+      // Fallback: match treatment keyword only if no vehicle variant found
+      const fallbackTreatmentMatch = dbServices.find((s) =>
+        treatment.searchKeywords.some((kw) => s.name.toLowerCase().includes(kw))
+      );
+      if (fallbackTreatmentMatch) {
+        return fallbackTreatmentMatch.price;
+      }
+    }
+
+    return treatment.defaultPrices[vehicleTierId] || treatment.defaultPrices.hatchback;
+  };
+
+  const calculatedPackagePrice = getExactPrice(currentTreatmentObj, selectedVehicle);
+
   const addonsTotalPrice = selectedAddons.reduce((acc, addonId) => {
-    const addonObj = addons.find((a) => a.id === addonId);
-    return acc + (addonObj ? addonObj.price : 0);
+    const addonObj = ADDONS.find((a) => a.id === addonId);
+    if (!addonObj) return acc;
+
+    // Check DB for exact addon price
+    const matchedDbAddon = dbServices.find((s) =>
+      addonObj.searchKeywords.some((kw) => s.name.toLowerCase().includes(kw))
+    );
+
+    return acc + (matchedDbAddon ? matchedDbAddon.price : addonObj.defaultPrice);
   }, 0);
 
   const totalEstimatedPrice = calculatedPackagePrice + addonsTotalPrice;
@@ -153,7 +169,7 @@ export function PriceEstimator() {
           Estimate Your Car Detailing Cost
         </h2>
         <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
-          Select your vehicle size, preferred detailing treatment, and optional care add-ons to generate an instant estimate.
+          Select your vehicle size, preferred detailing treatment, and optional care add-ons to generate an exact estimate matching our official package pricing.
         </p>
       </div>
 
@@ -191,8 +207,8 @@ export function PriceEstimator() {
           Step 2: Choose Detailing Treatment
         </label>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {treatments.map((treatment) => {
-            const priceForTier = Math.round(treatment.basePrice * currentTier.multiplier);
+          {TREATMENTS.map((treatment) => {
+            const priceForSelectedVehicle = getExactPrice(treatment, selectedVehicle);
             const isSelected = selectedTreatment === treatment.id;
             return (
               <button
@@ -211,7 +227,7 @@ export function PriceEstimator() {
                   <p className="text-xs text-gray-400 leading-relaxed">{treatment.description}</p>
                 </div>
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-zinc-800/60">
-                  <span className="text-base font-black text-red-500">₹{priceForTier}</span>
+                  <span className="text-base font-black text-red-500">₹{priceForSelectedVehicle}</span>
                   <span className={`text-[10px] font-semibold uppercase ${isSelected ? "text-red-400" : "text-gray-500"}`}>
                     {isSelected ? "✓ Selected" : "Select"}
                   </span>
@@ -228,8 +244,13 @@ export function PriceEstimator() {
           Step 3: Optional Care Add-ons
         </label>
         <div className="grid sm:grid-cols-3 gap-3">
-          {addons.map((addon) => {
+          {ADDONS.map((addon) => {
             const isChecked = selectedAddons.includes(addon.id);
+            const matchedDbAddon = dbServices.find((s) =>
+              addon.searchKeywords.some((kw) => s.name.toLowerCase().includes(kw))
+            );
+            const addonPrice = matchedDbAddon ? matchedDbAddon.price : addon.defaultPrice;
+
             return (
               <button
                 key={addon.id}
@@ -242,7 +263,7 @@ export function PriceEstimator() {
               >
                 <div>
                   <div className="text-xs font-semibold text-white">{addon.name}</div>
-                  <div className="text-xs font-bold text-red-400 mt-0.5">+₹{addon.price}</div>
+                  <div className="text-xs font-bold text-red-400 mt-0.5">+₹{addonPrice}</div>
                 </div>
                 <span className={`text-base ${isChecked ? "text-red-500 font-bold" : "text-gray-600"}`}>
                   {isChecked ? "☑" : "☐"}
@@ -257,7 +278,7 @@ export function PriceEstimator() {
       <div className="bg-gradient-to-r from-red-950/60 via-zinc-900 to-black border border-red-500/40 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="space-y-1 text-center sm:text-left">
           <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
-            Estimated Total for {currentTier.name}
+            Exact Total for {currentTier.name}
           </div>
           <div className="text-3xl sm:text-4xl font-black text-white flex items-center justify-center sm:justify-start gap-2">
             <span className="text-red-500">₹{totalEstimatedPrice}</span>
