@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 interface VehicleTier {
@@ -23,6 +23,14 @@ interface Addon {
   price: number;
 }
 
+interface ApiService {
+  id: string;
+  name: string;
+  price: number;
+  category: string | null;
+  isActive: boolean;
+}
+
 const VEHICLE_TIERS: VehicleTier[] = [
   { id: "hatchback", name: "Hatchback / Compact", example: "Swift, Baleno, i20, Tiago", multiplier: 1.0 },
   { id: "sedan", name: "Sedan / Executive", example: "City, Verna, Ciaz, Slavia", multiplier: 1.25 },
@@ -30,7 +38,7 @@ const VEHICLE_TIERS: VehicleTier[] = [
   { id: "luxury", name: "Luxury / Super SUV", example: "BMW 3/5, Audi Q5, Mercedes C/E", multiplier: 1.75 },
 ];
 
-const TREATMENTS: Treatment[] = [
+const DEFAULT_TREATMENTS: Treatment[] = [
   {
     id: "wash",
     name: "Premium Foam Wash & Vacuum",
@@ -63,7 +71,7 @@ const TREATMENTS: Treatment[] = [
   },
 ];
 
-const ADDONS: Addon[] = [
+const DEFAULT_ADDONS: Addon[] = [
   { id: "headlight", name: "Headlight UV Restoration", price: 499 },
   { id: "engine", name: "Engine Bay Detailing & Dressing", price: 399 },
   { id: "windshield", name: "Windshield Hydrophobic Coating", price: 799 },
@@ -73,13 +81,55 @@ export function PriceEstimator() {
   const [selectedVehicle, setSelectedVehicle] = useState<string>("hatchback");
   const [selectedTreatment, setSelectedTreatment] = useState<string>("wash");
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [treatments, setTreatments] = useState<Treatment[]>(DEFAULT_TREATMENTS);
+  const [addons, setAddons] = useState<Addon[]>(DEFAULT_ADDONS);
+
+  // Sync pricing dynamically with admin-managed database services
+  useEffect(() => {
+    fetch("/api/services")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.services)) {
+          const dbServices: ApiService[] = data.services.filter((s: ApiService) => s.isActive);
+
+          setTreatments((prev) =>
+            prev.map((t) => {
+              const match = dbServices.find((s) => {
+                const n = s.name.toLowerCase();
+                if (t.id === "wash") return n.includes("wash") || n.includes("foam");
+                if (t.id === "interior") return n.includes("interior") || n.includes("cabin");
+                if (t.id === "correction") return n.includes("correction") || n.includes("restoration") || n.includes("polish");
+                if (t.id === "ceramic") return n.includes("ceramic") || n.includes("coating");
+                if (t.id === "ppf") return n.includes("ppf") || n.includes("film");
+                return false;
+              });
+              return match ? { ...t, basePrice: match.price } : t;
+            })
+          );
+
+          setAddons((prev) =>
+            prev.map((a) => {
+              const match = dbServices.find((s) => {
+                const n = s.name.toLowerCase();
+                if (a.id === "headlight") return n.includes("headlight");
+                if (a.id === "engine") return n.includes("engine");
+                if (a.id === "windshield") return n.includes("windshield") || n.includes("rain");
+                return s.category === "Addon" && n.includes(a.name.toLowerCase());
+              });
+              return match ? { ...a, price: match.price } : a;
+            })
+          );
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const currentTier = VEHICLE_TIERS.find((v) => v.id === selectedVehicle) || VEHICLE_TIERS[0];
-  const currentTreatment = TREATMENTS.find((t) => t.id === selectedTreatment) || TREATMENTS[0];
+  const currentTreatment = treatments.find((t) => t.id === selectedTreatment) || treatments[0];
 
   const calculatedPackagePrice = Math.round(currentTreatment.basePrice * currentTier.multiplier);
   const addonsTotalPrice = selectedAddons.reduce((acc, addonId) => {
-    const addonObj = ADDONS.find((a) => a.id === addonId);
+    const addonObj = addons.find((a) => a.id === addonId);
     return acc + (addonObj ? addonObj.price : 0);
   }, 0);
 
@@ -141,7 +191,7 @@ export function PriceEstimator() {
           Step 2: Choose Detailing Treatment
         </label>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {TREATMENTS.map((treatment) => {
+          {treatments.map((treatment) => {
             const priceForTier = Math.round(treatment.basePrice * currentTier.multiplier);
             const isSelected = selectedTreatment === treatment.id;
             return (
@@ -178,7 +228,7 @@ export function PriceEstimator() {
           Step 3: Optional Care Add-ons
         </label>
         <div className="grid sm:grid-cols-3 gap-3">
-          {ADDONS.map((addon) => {
+          {addons.map((addon) => {
             const isChecked = selectedAddons.includes(addon.id);
             return (
               <button

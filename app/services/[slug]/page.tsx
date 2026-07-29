@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
 import { SERVICES_DATA } from "@/lib/services-data";
+import { prisma } from "@/lib/prisma";
 
 export function generateStaticParams() {
   return Object.keys(SERVICES_DATA).map((slug) => ({ slug }));
@@ -68,6 +69,35 @@ export default async function ServiceDetailPage({
 
   if (!service) {
     notFound();
+  }
+
+  // Fetch live active services from database to keep pricing 100% consistent with admin settings
+  let displayPriceRange = service.priceRange;
+  try {
+    const dbServices = await prisma.service.findMany({
+      where: { isActive: true },
+    });
+
+    const matchingPrices = dbServices
+      .filter((s) => {
+        const n = s.name.toLowerCase();
+        if (slug === "ceramic-coating") return n.includes("ceramic") || n.includes("coating");
+        if (slug === "paint-protection-film") return n.includes("ppf") || n.includes("film");
+        if (slug === "paint-correction") return n.includes("correction") || n.includes("restoration") || n.includes("polish");
+        if (slug === "interior-detailing") return n.includes("interior") || n.includes("cabin");
+        if (slug === "car-wash") return n.includes("wash") || n.includes("foam");
+        if (slug === "car-spa") return n.includes("spa") || n.includes("wash");
+        return false;
+      })
+      .map((s) => s.price);
+
+    if (matchingPrices.length > 0) {
+      const minP = Math.min(...matchingPrices);
+      const maxP = Math.max(...matchingPrices);
+      displayPriceRange = minP === maxP ? `₹${minP}` : `Starting at ₹${minP}`;
+    }
+  } catch (err) {
+    console.error("Error fetching db services for price consistency:", err);
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://kleenkars.in";
@@ -166,7 +196,7 @@ export default async function ServiceDetailPage({
               <span className="text-[10px] uppercase font-bold tracking-widest text-red-400 bg-red-950/40 border border-red-500/20 px-3 py-1 rounded-full">
                 Aligarh Detailing Service
               </span>
-              <span className="text-xs text-gray-400">{service.priceRange}</span>
+              <span className="text-xs text-gray-400">{displayPriceRange}</span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
