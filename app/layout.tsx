@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/homepage/Navbar";
 import AutoLogout from "@/components/AutoLogout";
+import WhatsAppWidget from "@/components/WhatsAppWidget";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -107,6 +108,7 @@ export default function RootLayout({
         <Navbar />
         <main className="flex-1 page-shell">{children}</main>
         <AutoLogout />
+        <WhatsAppWidget />
       </body>
     </html>
   );

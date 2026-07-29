@@ -5,6 +5,7 @@ import { Metadata } from "next";
 import { ChatBotWidget } from "@/components/ui/ChatBotWidget";
 import { OfferModal } from "@/components/homepage/OfferModal";
 import { ServicesGrid } from "@/components/homepage/ServicesGrid";
+import { PriceEstimator } from "@/components/homepage/PriceEstimator";
 
 export const metadata: Metadata = {
   title: "Kleenkars — Premium Car Wash & Car Detailing Studio in Aligarh",
@@ -386,6 +387,11 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+        </section>
+
+        {/* PRICE ESTIMATOR CALCULATOR SECTION */}
+        <section className="main-container py-8 sm:py-12 lg:py-16 border-t border-zinc-900" id="estimator">
+          <PriceEstimator />
         </section>
 
         {/* FAQS SECTION */}
