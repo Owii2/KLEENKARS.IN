@@ -1,7 +1,17 @@
 import Link from "next/link";
+import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 
 export const revalidate = 60; // Revalidate every minute
+
+export const metadata: Metadata = {
+  title: "Car Care & Detailing Blog | Kleenkars Aligarh",
+  description:
+    "Expert car wash guides, ceramic coating tutorials, paint protection film (PPF) comparisons, interior cleaning tips, and vehicle maintenance advice from Kleenkars Aligarh.",
+  alternates: {
+    canonical: "https://kleenkars.in/blog",
+  },
+};
 
 export default async function BlogListPage() {
   // Query all published blog posts from database directly
@@ -23,8 +33,32 @@ export default async function BlogListPage() {
     },
   });
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://kleenkars.in",
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blog",
+        "item": "https://kleenkars.in/blog",
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-black text-white py-16 px-4 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
@@ -32,10 +66,10 @@ export default async function BlogListPage() {
             ← Back to Homepage
           </Link>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mt-4">
-            The Kleenkars Blog
+            The Kleenkars Detailing Blog
           </h1>
           <p className="text-gray-400 max-w-xl mx-auto text-sm leading-relaxed">
-            Professional car wash guides, detailing techniques, company news, and auto care tips from Aligarh's premium detailers.
+            Professional car wash guides, detailing techniques, ceramic coating care, and auto maintenance tips from Aligarh&apos;s leading car detailing studio.
           </p>
         </div>
 
