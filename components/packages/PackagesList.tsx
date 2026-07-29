@@ -123,7 +123,7 @@ export function PackagesList() {
 
   if (loading) {
     return (
-      <div className="py-20 text-center">
+      <div className="py-12 sm:py-20 text-center">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500 mb-4"></div>
         <p className="text-gray-400 text-sm">Loading car detailing packages...</p>
       </div>
@@ -131,19 +131,19 @@ export function PackagesList() {
   }
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-12 sm:space-y-16">
       {/* PACKAGES GRID */}
       <div>
-        <h2 className="text-2xl font-bold mb-8 text-white flex items-center gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-8 text-white flex items-center gap-3">
           <span className="w-2 h-6 bg-red-500 rounded-full inline-block"></span>
           Main Wash &amp; Detailing Packages
         </h2>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {packages.map((pkg) => (
             <div
               key={pkg.id}
-              className="bg-zinc-950 border border-zinc-800 rounded-3xl p-8 flex flex-col justify-between hover:border-red-500/50 transition-all duration-300 shadow-xl hover:shadow-red-500/5 group"
+              className="bg-zinc-950 border border-zinc-800 rounded-2xl sm:rounded-3xl p-5 sm:p-8 flex flex-col justify-between hover:border-red-500/50 transition-all duration-300 shadow-xl hover:shadow-red-500/5 group"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -153,24 +153,24 @@ export function PackagesList() {
                   <span className="text-xs text-gray-500">By Vehicle Size</span>
                 </div>
 
-                <h3 className="text-2xl font-bold text-white group-hover:text-red-400 transition-colors">
+                <h3 className="text-xl sm:text-2xl font-bold text-white group-hover:text-red-400 transition-colors">
                   {pkg.name}
                 </h3>
 
-                <p className="text-gray-400 text-sm leading-relaxed">
+                <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
                   {pkg.description || "Comprehensive interior and exterior car detailing treatment."}
                 </p>
               </div>
 
-              <div className="pt-8 border-t border-zinc-900/80 mt-8 flex items-end justify-between">
+              <div className="pt-6 sm:pt-8 border-t border-zinc-900/80 mt-6 sm:mt-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
                 <div>
                   <div className="text-[10px] uppercase text-gray-500 font-semibold tracking-wider">Pricing</div>
-                  <div className="text-2xl font-black text-white">{pkg.priceRange}</div>
+                  <div className="text-xl sm:text-2xl font-black text-white">{pkg.priceRange}</div>
                 </div>
 
                 <Link
                   href="/booking"
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition"
+                  className="w-full sm:w-auto text-center bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition"
                 >
                   Book Package
                 </Link>
@@ -183,7 +183,7 @@ export function PackagesList() {
       {/* ADDONS SECTION */}
       {addons.length > 0 && (
         <div className="pt-8 border-t border-zinc-900">
-          <h2 className="text-2xl font-bold mb-8 text-white flex items-center gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold mb-6 sm:mb-8 text-white flex items-center gap-3">
             <span className="w-2 h-6 bg-red-500 rounded-full inline-block"></span>
             Add-on Care Treatments
           </h2>
@@ -192,15 +192,15 @@ export function PackagesList() {
             {addons.map((addon) => (
               <div
                 key={addon.id}
-                className="bg-zinc-950/60 border border-zinc-800/80 rounded-2xl p-6 flex flex-col justify-between"
+                className="bg-zinc-950/60 border border-zinc-800/80 rounded-2xl p-5 sm:p-6 flex flex-col justify-between"
               >
                 <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-white">{addon.name}</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-white">{addon.name}</h3>
                   <p className="text-gray-400 text-xs leading-relaxed">{addon.description}</p>
                 </div>
 
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-zinc-900">
-                  <span className="text-lg font-bold text-red-500">₹{addon.price}</span>
+                  <span className="text-base sm:text-lg font-bold text-red-500">₹{addon.price}</span>
                   <Link
                     href="/booking"
                     className="text-xs font-semibold text-gray-300 hover:text-white transition"

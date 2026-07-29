@@ -105,11 +105,11 @@ export function FranchiseForm() {
   };
 
   return (
-    <div className="glass-panel p-8 rounded-3xl bg-zinc-950 border border-zinc-800">
+    <div className="glass-panel p-5 sm:p-8 rounded-2xl sm:rounded-3xl bg-zinc-950 border border-zinc-800">
       <div className="mb-6">
         <p className="text-red-400 uppercase tracking-[0.35em] font-semibold text-xs">Franchise Inquiry Application</p>
-        <h2 className="text-3xl font-black mt-2 text-white">Apply for a Kleenkars Franchise</h2>
-        <p className="text-gray-400 mt-2 text-sm">
+        <h2 className="text-2xl sm:text-3xl font-black mt-2 text-white">Apply for a Kleenkars Franchise</h2>
+        <p className="text-gray-400 mt-2 text-xs sm:text-sm leading-relaxed">
           Share your details to apply for a Kleenkars franchise outlet. Our expansion team reviews every application thoroughly.
         </p>
       </div>

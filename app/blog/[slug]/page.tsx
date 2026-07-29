@@ -142,13 +142,13 @@ export default async function BlogPostDetailPage({
   };
 
   return (
-    <div className="min-h-screen bg-black text-white py-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-black text-white py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <article className="max-w-3xl mx-auto space-y-8">
+      <article className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
         {/* Back Link & Breadcrumb */}
         <div className="flex justify-between items-center border-b border-zinc-900 pb-4">
           <Link
@@ -175,7 +175,7 @@ export default async function BlogPostDetailPage({
             ))}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
             {post.title}
           </h1>
 

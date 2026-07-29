@@ -230,11 +230,11 @@ export default function HomePage() {
         </section>
 
         {/* SERVICES SECTION */}
-        <section className="main-container py-16" id="services">
+        <section className="main-container py-8 sm:py-12 lg:py-16" id="services">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
             <div>
               <p className="text-red-400 uppercase tracking-[0.35em] font-semibold mb-3">Our Services &amp; Packages</p>
-              <h2 className="text-4xl font-black">Professional Detailing for Every Vehicle in Aligarh</h2>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black">Professional Detailing for Every Vehicle in Aligarh</h2>
             </div>
             <Link href="/packages" className={styles.secondaryBtn}>
               View All Detailed Packages
@@ -245,7 +245,7 @@ export default function HomePage() {
         </section>
 
         {/* FEATURES & STATS */}
-        <section className="bg-[#050505] py-16 border-y border-zinc-900">
+        <section className="bg-[#050505] py-8 sm:py-12 lg:py-16 border-y border-zinc-900">
           <div className="main-container">
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               {features.map((feature) => (
@@ -268,10 +268,10 @@ export default function HomePage() {
         </section>
 
         {/* SEO CONTENT OVERVIEW SECTION */}
-        <section className="main-container py-16 space-y-12">
+        <section className="main-container py-8 sm:py-12 lg:py-16 space-y-12">
           <div className="max-w-4xl mx-auto space-y-6 text-gray-300 leading-relaxed">
             <p className="text-red-400 uppercase tracking-[0.35em] font-semibold text-center">Comprehensive Auto Care</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-white text-center">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white text-center">
               Why Kleenkars is Aligarh&apos;s Preferred Car Detailing Studio
             </h2>
             <p>
@@ -330,11 +330,11 @@ export default function HomePage() {
         </section>
 
         {/* GALLERY SECTION */}
-        <section className="main-container py-16 border-t border-zinc-900">
+        <section className="main-container py-8 sm:py-12 lg:py-16 border-t border-zinc-900">
           <div className="text-center mb-12">
             <p className="text-red-400 uppercase tracking-[0.35em] font-semibold mb-3">Spotless Results</p>
-            <h2 className="text-4xl font-black">Before &amp; After Detailing Gallery</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto mt-3">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black">Before &amp; After Detailing Gallery</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto mt-3 text-sm">
               Explore recent detailing transformations carried out at our Aligarh studio.
             </p>
           </div>
@@ -356,20 +356,20 @@ export default function HomePage() {
                     style={{ width: "100%", height: "auto" }}
                   />
                 </div>
-                <h3 className="mt-4 text-xl font-semibold text-white">{item.title}</h3>
-                <p className="text-gray-400 mt-2 text-sm">Professional care and finish for showroom-level results.</p>
+                <h3 className="mt-4 text-lg sm:text-xl font-semibold text-white">{item.title}</h3>
+                <p className="text-gray-400 mt-2 text-xs sm:text-sm">Professional care and finish for showroom-level results.</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* REVIEWS SECTION */}
-        <section className="bg-[#0a0a0a] py-16 border-t border-zinc-900">
+        <section className="bg-[#0a0a0a] py-8 sm:py-12 lg:py-16 border-t border-zinc-900">
           <div className="main-container">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-10">
               <div>
                 <p className="text-red-400 uppercase tracking-[0.35em] font-semibold mb-3">Client Feedback</p>
-                <h2 className="text-4xl font-black">5.0 Star Google Reviews in Aligarh</h2>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black">5.0 Star Google Reviews in Aligarh</h2>
               </div>
               <Link href="/booking" className={styles.primaryBtn}>
                 Book Your Service
@@ -381,7 +381,7 @@ export default function HomePage() {
                 <div key={review.name} className={`${styles.reviewCard} p-6`}>
                   <div className="text-yellow-400 mb-4">★★★★★</div>
                   <p className="text-gray-300 mb-5 text-sm leading-relaxed">&quot;{review.review}&quot;</p>
-                  <div className="text-white font-bold">{review.name}</div>
+                  <div className="text-white font-bold text-sm">{review.name}</div>
                 </div>
               ))}
             </div>
@@ -389,18 +389,18 @@ export default function HomePage() {
         </section>
 
         {/* FAQS SECTION */}
-        <section className="main-container py-16 border-t border-zinc-900" id="faq">
+        <section className="main-container py-8 sm:py-12 lg:py-16 border-t border-zinc-900" id="faq">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="text-center space-y-3">
-              <p className="text-red-400 uppercase tracking-[0.35em] font-semibold">Got Questions?</p>
-              <h2 className="text-4xl font-black">Frequently Asked Questions</h2>
+              <p className="text-red-400 uppercase tracking-[0.35em] font-semibold text-xs sm:text-sm">Got Questions?</p>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black">Frequently Asked Questions</h2>
             </div>
 
-            <div className="grid gap-6">
+            <div className="grid gap-4 sm:gap-6">
               {faqs.map((faq) => (
-                <div key={faq.question} className="bg-zinc-950 p-6 rounded-2xl border border-zinc-800 space-y-2">
-                  <h3 className="text-lg font-bold text-white">{faq.question}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">{faq.answer}</p>
+                <div key={faq.question} className="bg-zinc-950 p-5 sm:p-6 rounded-2xl border border-zinc-800 space-y-2">
+                  <h3 className="text-base sm:text-lg font-bold text-white">{faq.question}</h3>
+                  <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">{faq.answer}</p>
                 </div>
               ))}
             </div>
@@ -408,11 +408,11 @@ export default function HomePage() {
         </section>
 
         {/* MAP & LOCATION SECTION */}
-        <section className="main-container py-16 border-t border-zinc-900">
+        <section className="main-container py-8 sm:py-12 lg:py-16 border-t border-zinc-900">
           <div className="grid lg:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <p className="text-red-400 uppercase tracking-[0.35em] font-semibold">Visit Our Studio</p>
-              <h2 className="text-4xl font-black">Find Kleenkars in Aligarh</h2>
+              <p className="text-red-400 uppercase tracking-[0.35em] font-semibold text-xs sm:text-sm">Visit Our Studio</p>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black">Find Kleenkars in Aligarh</h2>
               <p className="text-gray-400 max-w-xl leading-relaxed text-sm">
                 We are located conveniently at <strong>Mustafa Market, Anoop Shahar Rd, Aligarh, UP 202001</strong>. Book online and let our team handle your vehicle with extreme precision and care.
               </p>

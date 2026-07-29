@@ -139,13 +139,13 @@ export default async function ServiceDetailPage({
   };
 
   return (
-    <div className="min-h-screen bg-black text-white py-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-black text-white py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="max-w-5xl mx-auto space-y-12">
+      <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
         {/* BREADCRUMBS */}
         <nav aria-label="Breadcrumb" className="text-xs text-gray-400 flex items-center gap-2">
           <Link href="/" className="hover:text-red-400 transition-colors">
@@ -160,8 +160,8 @@ export default async function ServiceDetailPage({
         </nav>
 
         {/* HERO SECTION */}
-        <div className="grid md:grid-cols-2 gap-8 items-center border-b border-zinc-900 pb-12">
-          <div className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-8 items-center border-b border-zinc-900 pb-8 sm:pb-12">
+          <div className="space-y-4 sm:space-y-6">
             <div className="inline-flex gap-2 items-center">
               <span className="text-[10px] uppercase font-bold tracking-widest text-red-400 bg-red-950/40 border border-red-500/20 px-3 py-1 rounded-full">
                 Aligarh Detailing Service
@@ -169,24 +169,24 @@ export default async function ServiceDetailPage({
               <span className="text-xs text-gray-400">{service.priceRange}</span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
               {service.name}
             </h1>
 
-            <p className="text-gray-300 text-sm leading-relaxed">
+            <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
               {service.tagline}
             </p>
 
-            <div className="flex flex-wrap gap-4 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Link
                 href="/booking"
-                className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition shadow-lg shadow-red-600/20"
+                className="w-full sm:w-auto text-center bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition shadow-lg shadow-red-600/20 flex items-center justify-center min-h-[44px]"
               >
                 Book {service.shortName} Online
               </Link>
               <a
                 href="tel:8650007661"
-                className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition"
+                className="w-full sm:w-auto text-center bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition flex items-center justify-center min-h-[44px]"
               >
                 Call +91 8650007661
               </a>
@@ -298,16 +298,16 @@ export default async function ServiceDetailPage({
           <p className="text-gray-400 text-xs max-w-lg mx-auto">
             Doorstep pickup &amp; drop available across Aligarh. Book your slot online or call our detailing specialists today.
           </p>
-          <div className="pt-2 flex flex-wrap justify-center gap-4">
+          <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
             <Link
               href="/booking"
-              className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-3.5 rounded-xl transition"
+              className="w-full sm:w-auto text-center bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-3.5 rounded-xl transition min-h-[44px] flex items-center justify-center"
             >
               Book Service Now
             </Link>
             <Link
               href="/packages"
-              className="bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-3.5 rounded-xl transition"
+              className="w-full sm:w-auto text-center bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-3.5 rounded-xl transition min-h-[44px] flex items-center justify-center"
             >
               Compare All Packages
             </Link>

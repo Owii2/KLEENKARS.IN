@@ -53,13 +53,13 @@ export default async function BlogListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white py-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-black text-white py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="max-w-6xl mx-auto space-y-12">
+      <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
           <Link href="/" className="text-xs uppercase tracking-[0.3em] text-red-500 hover:text-red-400 transition-colors">

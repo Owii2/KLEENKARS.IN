@@ -29,8 +29,10 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#08080a]/90 backdrop-blur-2xl shadow-black/30">
-      <div className="main-container flex h-20 items-center justify-between gap-6">
-        <Logo width={230} height={65} className="mt-1" />
+      <div className="main-container flex h-16 sm:h-20 items-center justify-between gap-4 sm:gap-6">
+        <div className="w-40 sm:w-56 shrink-0">
+          <Logo width={230} height={65} className="mt-1 max-w-full h-auto" />
+        </div>
         <nav className="hidden items-center gap-8 lg:flex">
           {links.map((link) => (
             <Link
@@ -52,7 +54,8 @@ export default function Navbar() {
 
         <button
           onClick={() => setOpen(!open)}
-          className="lg:hidden rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10"
+          className="lg:hidden rounded-full border border-white/10 bg-white/5 px-4 py-2.5 min-h-[44px] text-xs sm:text-sm font-semibold text-gray-200 transition hover:bg-white/10 flex items-center justify-center"
+          aria-label="Toggle navigation menu"
         >
           {open ? "Close" : "Menu"}
         </button>

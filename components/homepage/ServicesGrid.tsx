@@ -74,18 +74,18 @@ export function ServicesGrid() {
   return (
     <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
       {services.map((item) => (
-        <div key={item.id} className={`${styles.serviceCard} p-8 flex flex-col justify-between`}>
+        <div key={item.id} className={`${styles.serviceCard} p-5 sm:p-8 flex flex-col justify-between`}>
           <div className="mb-4">
-            <h3 className="text-2xl font-semibold mb-2 text-white">{item.name}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">{item.description}</p>
+            <h3 className="text-xl sm:text-2xl font-semibold mb-2 text-white">{item.name}</h3>
+            <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">{item.description}</p>
           </div>
 
-          <div className="flex items-center justify-between gap-4 mt-6">
-            <span className="text-2xl font-black text-red-500">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-6">
+            <span className="text-xl sm:text-2xl font-black text-red-500">
               {item.isStartingPrice ? `Starting at ₹${item.price}` : `₹${item.price}`}
             </span>
 
-            <Link href="/booking" className={styles.primaryBtn}>
+            <Link href="/booking" className={`${styles.primaryBtn} w-full sm:w-auto text-center`}>
               Book now
             </Link>
           </div>

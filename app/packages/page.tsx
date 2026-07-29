@@ -73,13 +73,13 @@ export default function PackagesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white py-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-black text-white py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="max-w-6xl mx-auto space-y-12">
+      <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
         {/* BREADCRUMB & HEADER */}
         <div className="space-y-4">
           <nav aria-label="Breadcrumb" className="text-xs text-gray-400 flex items-center gap-2">
@@ -90,11 +90,11 @@ export default function PackagesPage() {
             <span className="text-white font-semibold">Packages</span>
           </nav>
 
-          <div className="text-center max-w-3xl mx-auto space-y-4 pt-4">
-            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+          <div className="text-center max-w-3xl mx-auto space-y-3 pt-2">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
               Car Detailing Packages &amp; Pricing
             </h1>
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
               Transparent rates for Hatchbacks, Sedans, MUVs, and Luxury SUVs in Aligarh. All packages include options for free doorstep pickup and drop.
             </p>
           </div>

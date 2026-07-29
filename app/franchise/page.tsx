@@ -32,13 +32,13 @@ export default function FranchisePage() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white py-16 px-4 sm:px-8">
+    <main className="min-h-screen bg-black text-white py-8 sm:py-12 lg:py-16 px-4 sm:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="mx-auto max-w-6xl space-y-12">
+      <div className="mx-auto max-w-6xl space-y-8 sm:space-y-12">
         {/* BREADCRUMB & HEADER */}
         <div className="space-y-4">
           <nav aria-label="Breadcrumb" className="text-xs text-gray-400 flex items-center gap-2">
@@ -49,8 +49,8 @@ export default function FranchisePage() {
             <span className="text-white font-semibold">Franchise</span>
           </nav>
 
-          <div className="text-center max-w-3xl mx-auto space-y-4 pt-4">
-            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+          <div className="text-center max-w-3xl mx-auto space-y-3 pt-2">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
               Start a High-ROI Car Wash &amp; Detailing Franchise
             </h1>
             <p className="text-gray-400 text-sm leading-relaxed">
