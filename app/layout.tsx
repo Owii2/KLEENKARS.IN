@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/homepage/Navbar";
+import AutoLogout from "@/components/AutoLogout";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -105,6 +106,7 @@ export default function RootLayout({
       <body className="min-h-full bg-[#050507] text-white">
         <Navbar />
         <main className="flex-1 page-shell">{children}</main>
+        <AutoLogout />
       </body>
     </html>
   );
