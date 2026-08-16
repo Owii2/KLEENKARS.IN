@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/homepage/Navbar";
 import AutoLogout from "@/components/AutoLogout";
 import WhatsAppWidget from "@/components/WhatsAppWidget";
+import CookieConsent from "@/components/CookieConsent";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -109,6 +110,7 @@ export default function RootLayout({
         <main className="flex-1 page-shell">{children}</main>
         <AutoLogout />
         <WhatsAppWidget />
+        <CookieConsent />
       </body>
     </html>
   );

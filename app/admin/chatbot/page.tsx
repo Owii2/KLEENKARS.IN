@@ -99,13 +99,6 @@ export default function AdminChatbotManager() {
     checkApiStatus();
   }, []);
 
-  // Trigger interview question fetch
-  useEffect(() => {
-    if (activeTab === "interview" && !interviewQuestion) {
-      fetchNextInterviewQuestion();
-    }
-  }, [activeTab]);
-
   // Fetch next interview question from backend (Gemini dynamically resolves gaps)
   const fetchNextInterviewQuestion = async () => {
     setInterviewLoading(true);
@@ -127,6 +120,13 @@ export default function AdminChatbotManager() {
       setInterviewLoading(false);
     }
   };
+
+  // Trigger interview question fetch
+  useEffect(() => {
+    if (activeTab === "interview" && !interviewQuestion) {
+      fetchNextInterviewQuestion();
+    }
+  }, [activeTab, interviewQuestion]);
 
   // Submit interview answer
   const handleSaveInterviewAnswer = async (e: React.FormEvent) => {
@@ -468,10 +468,15 @@ export default function AdminChatbotManager() {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="font-bold text-sm text-white">{s.customerName}</h4>
                             {s.isPermanent && (
                               <span className="text-[10px]" title="Saved Permanently">📌</span>
+                            )}
+                            {s.messages.some(m => m.text.toLowerCase().includes("whatsapp") || m.text.toLowerCase().includes("enquiry")) && (
+                              <span className="bg-[#25D366]/20 border border-[#25D366]/40 text-[#25D366] text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                                💬 WhatsApp
+                              </span>
                             )}
                           </div>
                           <span className="text-[10px] text-white/30 font-mono">

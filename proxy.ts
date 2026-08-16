@@ -15,6 +15,15 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  if (pathname.startsWith("/api/admin")) {
+    if (!token || !user) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+    }
+    if (user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden: Admin role required" }, { status: 403 });
+    }
+  }
+
   if (pathname.startsWith("/admin") && user.role !== "admin") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
@@ -45,5 +54,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/manager/:path*", "/staff/:path*"],
+  matcher: ["/admin/:path*", "/manager/:path*", "/staff/:path*", "/api/admin/:path*"],
 };

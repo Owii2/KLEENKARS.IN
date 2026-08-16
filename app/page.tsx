@@ -470,6 +470,15 @@ export default function HomePage() {
               <Link href="/franchise" className="hover:text-red-500 transition-colors duration-200">
                 Franchise
               </Link>
+              <Link href="/privacy" className="hover:text-red-500 transition-colors duration-200">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-red-500 transition-colors duration-200">
+                Terms of Service
+              </Link>
+              <Link href="/refunds" className="hover:text-red-500 transition-colors duration-200">
+                Refund Policy
+              </Link>
               <Link href="/customer/login" className="hover:text-red-500 transition-colors duration-200">
                 Customer Login
               </Link>

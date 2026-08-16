@@ -403,23 +403,25 @@ We are located at:
 
 🚗 **Doorstep Service:** We also offer doorstep car pick-up and drop-off services for your convenience! You can opt for this during booking.`;
   }
-  if (messageLower.includes("contact") || messageLower.includes("phone") || messageLower.includes("call") || messageLower.includes("mobile") || messageLower.includes("help") || messageLower.includes("support")) {
-    return `📞 **Contact Kleenkars Support**
+  if (messageLower.includes("contact") || messageLower.includes("phone") || messageLower.includes("call") || messageLower.includes("mobile") || messageLower.includes("help") || messageLower.includes("support") || messageLower.includes("whatsapp") || messageLower.includes("enquiry")) {
+    const waText = encodeURIComponent(`Hi Kleenkars! I have an enquiry: "${userMessage}"`);
+    return `📞 **Contact Kleenkars Support & WhatsApp**
 
-If you need any assistance, feel free to reach out:
+If you need any assistance or want to talk to our team directly:
 * 📱 **Phone Call:** Call us at **8650007661**
-* 💬 **WhatsApp:** Chat with us at **[wa.me/+918650007661](https://wa.me/+918650007661)**
+* 💬 **Direct WhatsApp:** **[Click here to chat on WhatsApp](https://wa.me/918650007661?text=${waText})**
 
-We are happy to answer any of your queries and help you select the best package!`;
+We are happy to answer any of your queries, provide custom quotes, and book your service! 🚗✨`;
   }
 
-  return `✉️ **Query Received**
+  const encodedEnquiry = encodeURIComponent(`Hi Kleenkars! Customer Enquiry: "${userMessage}"`);
+  return `✉️ **Enquiry Recorded**
 
-Thank you for contacting Kleenkars Support! I have recorded your message, and one of our customer care representatives will follow up with you shortly.
+Thank you for contacting Kleenkars Support! I have recorded your message, and our customer care team can assist you directly.
 
-If your request is urgent, please feel free to reach out directly:
-* 📞 **Phone:** **8650007661**
-* 💬 **WhatsApp:** **[wa.me/+918650007661](https://wa.me/+918650007661)**`;
+If you would like an instant reply on WhatsApp:
+* 💬 **WhatsApp Team:** **[Forward this enquiry to WhatsApp](https://wa.me/918650007661?text=${encodedEnquiry})**
+* 📞 **Phone:** **8650007661**`;
 }
 
 export async function POST(request: NextRequest) {
@@ -548,8 +550,9 @@ Instructions:
 1. Always stay in character as a Kleenkars representative.
 2. If the user is authenticated, address them by name and refer to their vehicles or bookings if helpful and relevant.
 3. Use the live services, pricing, and active coupons context when answering questions about costs, washes, or active discounts.
-4. Encourage them to book or contact support at 8650007661.
-5. Be concise and professional. Keep the tone friendly and high-end.
+4. Encourage them to book online or forward their enquiry directly to WhatsApp (8650007661).
+5. If the customer asks for a custom quote, special enquiry, bulk request, or direct assistance, invite them to send the enquiry to WhatsApp.
+6. Be concise and professional. Keep the tone friendly and high-end.
 
 Write the customer care reply:`;
 
