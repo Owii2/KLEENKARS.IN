@@ -262,8 +262,8 @@ export async function POST(req: Request) {
       notes: body.notes,
     };
 
-    // Trigger email alert asynchronously to admin/owner
-    sendEmailNotification(notificationParams).catch((err) => console.error("Email alert error:", err));
+    // Send email alert immediately to admin/owner
+    await sendEmailNotification(notificationParams).catch((err) => console.error("Email alert error:", err));
 
     // Build WhatsApp URL pre-filled for owner
     const whatsAppUrl = buildWhatsAppUrl(notificationParams);
