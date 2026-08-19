@@ -551,7 +551,6 @@ const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
                     <tr className="bg-red-600">
                       <th className="p-3 text-left text-white">Day</th>
                       <th className="p-3 text-left text-white">Date</th>
-                      <th className="p-3 text-left text-white">Time of Day</th>
                       <th className="p-3 text-left text-white">Bookings</th>
                       <th className="p-3 text-left text-white">Revenue</th>
                       <th className="p-3 text-left text-white">Avg Rev</th>
@@ -564,7 +563,6 @@ const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
                       <tr key={idx} className="border-b border-gray-800 hover:bg-white/5 transition-colors">
                         <td className="p-3 text-gray-200">{row.day}</td>
                         <td className="p-3 text-gray-400 font-mono text-xs">{row.date}</td>
-                        <td className="p-3 text-gray-200">{row.timeOfDay}</td>
                         <td className="p-3 text-gray-200">{row.bookings}</td>
                         <td className="p-3 text-green-400">₹{row.revenue}</td>
                         <td className="p-3 text-yellow-400">₹{row.avgRevenue}</td>
