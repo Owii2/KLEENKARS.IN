@@ -130,6 +130,22 @@ function toUpperStr(val: any): string | null {
   return s.toUpperCase();
 }
 
+const VEHICLE_KEYWORDS = new Set([
+  "BIKE", "CAR", "SUV", "SEDAN", "HATCHBACK", "MUV", "GLANZA", "KIA", "JEEP", 
+  "TIAGO", "ECO SPORT", "ACTIVA", "SX4", "BALENO", "SWIFT", "E-RICKSHAW", "NEXON", 
+  "KWID", "IGNIS", "FORTUNER", "I-10", "I10", "I20", "I-20", "XUV", "SCOOTY", 
+  "SCORPIO N", "SCORPIO", "BREZZA", "CRETA", "WAGON R", "WAGNOR", "VITARA", "BMW", 
+  "DZIRE", "THAR", "DUMPER", "VERNA", "SANTRO", "HYRYDER", "XUV 700", "XUV300", 
+  "HYCROSS", "INNOVA", "CIAZ", "SELTOS", "ALTO", "CITY", "AMAZE", "BULLET", "SPLENDOR",
+  "PULSAR", "ROYAL ENFIELD", "APACHE", "JUPITER", "ACCESS", "DIO", "AURA", "CARENS",
+  "SONET", "VENUE", "KIGER", "MAGNITE", "BOLERO", "ERTIGA", "TRIBER", "TAIGUN", "KUSHAQ"
+]);
+
+function isVehicleKeyword(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return VEHICLE_KEYWORDS.has(name.trim().toUpperCase());
+}
+
 // Intelligent Header Mapping with fallback to user-specified column letters/indexes
 function findColumnIndex(headers: string[], possibleNames: string[], customOverride?: string): number {
   if (customOverride && customOverride.trim()) {
@@ -145,11 +161,21 @@ function findColumnIndex(headers: string[], possibleNames: string[], customOverr
   }
 
   const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  
+  // 1. First Pass: Exact Match
   for (const name of possibleNames) {
     const cleanTarget = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const idx = normalizedHeaders.findIndex(h => h === cleanTarget || h.includes(cleanTarget));
+    const idx = normalizedHeaders.findIndex(h => h === cleanTarget);
     if (idx !== -1) return idx;
   }
+
+  // 2. Second Pass: Substring Match
+  for (const name of possibleNames) {
+    const cleanTarget = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const idx = normalizedHeaders.findIndex(h => h.includes(cleanTarget));
+    if (idx !== -1) return idx;
+  }
+
   return -1;
 }
 
@@ -425,9 +451,11 @@ export async function POST(req: Request) {
 
       const normalizedDateStr = normalizeDate(rawDate);
       
-      // ALL LOWERCASE LETTERS CONVERTED TO UPPERCASE:
       const paymentModeStr = toUpperStr(rawPaymentMode) || "CASH";
-      const customerNameStr = customerNameIdx !== -1 ? toUpperStr(row[customerNameIdx]) : null;
+      let customerNameStr = customerNameIdx !== -1 ? toUpperStr(row[customerNameIdx]) : null;
+      if (customerNameStr && isVehicleKeyword(customerNameStr)) {
+        customerNameStr = null;
+      }
       const customerMobileStr = customerMobileIdx !== -1 && row[customerMobileIdx] ? row[customerMobileIdx].trim() : null;
       const vehicleNumberStr = vehicleNumberIdx !== -1 ? toUpperStr(row[vehicleNumberIdx]) : null;
       let vehicleTypeStr = vehicleTypeIdx !== -1 ? toUpperStr(row[vehicleTypeIdx]) : null;
