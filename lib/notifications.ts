@@ -55,9 +55,9 @@ export function buildWhatsAppUrl(params: NotificationParams, ownerNumber = "9186
 }
 
 export async function sendEmailNotification(params: NotificationParams) {
-  const recipientEmail = process.env.NOTIFICATION_EMAIL || process.env.SMTP_USER || "info@kleenkars.in";
+  const recipientEmail = process.env.NOTIFICATION_EMAIL || "owii.rajput@gmail.com";
   
-  const smtpHost = process.env.SMTP_HOST;
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
   const smtpPort = parseInt(process.env.SMTP_PORT || "587");
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
@@ -131,7 +131,7 @@ export async function sendEmailNotification(params: NotificationParams) {
       });
 
       await transporter.sendMail({
-        from: `"Kleenkars Bookings" <${smtpUser}>`,
+        from: process.env.SMTP_FROM || `"Kleenkars Bookings" <${smtpUser}>`,
         to: recipientEmail,
         subject: `🚗 New Booking #${params.bookingId} - ${params.customerName} (${params.serviceType})`,
         html: htmlContent,
