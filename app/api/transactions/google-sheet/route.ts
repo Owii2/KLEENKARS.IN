@@ -3,13 +3,16 @@ import { NextResponse } from "next/server";
 import { requireRoles } from "@/lib/apiAuth";
 import { matchServiceWithPrice } from "@/lib/serviceMatcher";
 
-// Helper to convert column letter (e.g. 'A', 'B', 'AA') to 0-indexed column index
+// Helper to convert column letter or cell reference (e.g. 'A', 'A2', 'B2', 'AA') to 0-indexed column index
 function columnLetterToIndex(letter: string): number {
-  const clean = letter.trim().toUpperCase();
-  if (/^[A-Z]+$/.test(clean)) {
+  const clean = letter.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  // Matches cell reference like "A2", "B2", "AA2" or column letters like "A", "B", "AA"
+  const letterMatch = clean.match(/^([A-Z]+)\d*$/);
+  if (letterMatch && letterMatch[1]) {
+    const letters = letterMatch[1];
     let index = 0;
-    for (let i = 0; i < clean.length; i++) {
-      index = index * 26 + (clean.charCodeAt(i) - 64);
+    for (let i = 0; i < letters.length; i++) {
+      index = index * 26 + (letters.charCodeAt(i) - 64);
     }
     return index - 1;
   }

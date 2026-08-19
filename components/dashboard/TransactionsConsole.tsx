@@ -1551,87 +1551,87 @@ export default function TransactionsConsole() {
                   {showAdvancedMapping && (
                     <div className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-3 animate-in fade-in duration-150">
                       <p className="text-[11px] text-gray-400">
-                        Specify exact column letters (e.g. <strong>A</strong>, <strong>B</strong>, <strong>C</strong>) or custom header names. Leave blank to use intelligent auto-detection.
+                        Specify exact column letters or cell coordinates (e.g. <strong>A</strong> or <strong>A2</strong>, <strong>B</strong> or <strong>B2</strong>). Data rows automatically start fetching from row 2 (e.g. <strong>A2</strong> downwards).
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
                         <div>
-                          <label className="text-[11px] text-gray-400">Date Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Date Col (e.g. A2)</label>
                           <input
                             type="text"
-                            placeholder="e.g. A"
+                            placeholder="e.g. A or A2"
                             value={googleSheetCustomCols.date || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, date: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-gray-400">Amount Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Amount Col (e.g. B2)</label>
                           <input
                             type="text"
-                            placeholder="e.g. B"
+                            placeholder="e.g. B or B2"
                             value={googleSheetCustomCols.amount || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, amount: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-gray-400">Customer Name Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Customer Name Col</label>
                           <input
                             type="text"
-                            placeholder="e.g. C"
+                            placeholder="e.g. C or C2"
                             value={googleSheetCustomCols.customerName || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, customerName: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-gray-400">Vehicle No Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Vehicle No Col</label>
                           <input
                             type="text"
-                            placeholder="e.g. D"
+                            placeholder="e.g. D or D2"
                             value={googleSheetCustomCols.vehicleNumber || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, vehicleNumber: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-gray-400">Payment Mode Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Payment Mode Col</label>
                           <input
                             type="text"
-                            placeholder="e.g. E"
+                            placeholder="e.g. E or E2"
                             value={googleSheetCustomCols.paymentMode || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, paymentMode: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-gray-400">Service / Wash Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Service / Wash Col</label>
                           <input
                             type="text"
-                            placeholder="e.g. F"
+                            placeholder="e.g. F or F2"
                             value={googleSheetCustomCols.serviceOpted || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, serviceOpted: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-gray-400">Staff / Employee Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Staff / Employee Col</label>
                           <input
                             type="text"
-                            placeholder="e.g. G"
+                            placeholder="e.g. G or G2"
                             value={googleSheetCustomCols.assignedEmployee || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, assignedEmployee: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-gray-400">Notes / Remarks Col</label>
+                          <label className="text-[11px] text-gray-400 font-medium">Notes / Remarks Col</label>
                           <input
                             type="text"
-                            placeholder="e.g. H"
+                            placeholder="e.g. H or H2"
                             value={googleSheetCustomCols.notes || ""}
                             onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, notes: e.target.value })}
-                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs focus:border-emerald-500 focus:outline-none"
                           />
                         </div>
                       </div>
