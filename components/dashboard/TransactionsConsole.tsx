@@ -97,11 +97,25 @@ export default function TransactionsConsole() {
   
   // Google Sheet Auto-Sync States
   const [googleSheetUrl, setGoogleSheetUrl] = useState("");
+  const [googleSheetName, setGoogleSheetName] = useState("");
   const [googleSheetAutoSync, setGoogleSheetAutoSync] = useState(false);
   const [googleSheetSyncing, setGoogleSheetSyncing] = useState(false);
   const [googleSheetSaving, setGoogleSheetSaving] = useState(false);
   const [googleSheetLastSync, setGoogleSheetLastSync] = useState<any>(null);
   const [googleSheetFeedback, setGoogleSheetFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [googleSheetCustomCols, setGoogleSheetCustomCols] = useState<{
+    date?: string;
+    amount?: string;
+    paymentMode?: string;
+    customerName?: string;
+    customerMobile?: string;
+    vehicleNumber?: string;
+    vehicleType?: string;
+    serviceOpted?: string;
+    assignedEmployee?: string;
+    notes?: string;
+  }>({});
+  const [showAdvancedMapping, setShowAdvancedMapping] = useState(false);
   
   // Data lists
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -277,12 +291,14 @@ export default function TransactionsConsole() {
       const data = await res.json();
       if (data.success) {
         setGoogleSheetUrl(data.sheetUrl || "");
+        setGoogleSheetName(data.sheetName || "");
         setGoogleSheetAutoSync(data.autoSync || false);
+        setGoogleSheetCustomCols(data.customColumns || {});
         setGoogleSheetLastSync(data.lastSync || null);
 
         // If auto-sync is enabled and sheetUrl is present, trigger automatic background sync
         if (data.autoSync && data.sheetUrl) {
-          triggerGoogleSheetSync(data.sheetUrl, true);
+          triggerGoogleSheetSync(data.sheetUrl, data.sheetName, true);
         }
       }
     } catch (err) {
@@ -299,7 +315,9 @@ export default function TransactionsConsole() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sheetUrl: googleSheetUrl,
+          sheetName: googleSheetName,
           autoSync: googleSheetAutoSync,
+          customColumns: googleSheetCustomCols,
         }),
       });
       const data = await res.json();
@@ -315,8 +333,9 @@ export default function TransactionsConsole() {
     }
   };
 
-  const triggerGoogleSheetSync = async (urlToUse?: string, isBackground = false) => {
+  const triggerGoogleSheetSync = async (urlToUse?: string, sheetNameToUse?: string, isBackground = false) => {
     const url = urlToUse || googleSheetUrl;
+    const name = sheetNameToUse !== undefined ? sheetNameToUse : googleSheetName;
     if (!url.trim()) {
       setGoogleSheetFeedback({ type: "error", message: "Please provide a Google Sheet URL first." });
       return;
@@ -329,13 +348,17 @@ export default function TransactionsConsole() {
       const res = await fetch("/api/transactions/google-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetUrl: url }),
+        body: JSON.stringify({
+          sheetUrl: url,
+          sheetName: name,
+          customColumns: googleSheetCustomCols,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setGoogleSheetFeedback({
           type: "success",
-          message: data.message || `Sync Complete! ${data.addedCount} new transactions added, ${data.skippedCount} duplicates skipped.`,
+          message: data.message || `Sync Complete! ${data.addedCount} new transactions added (CONVERTED TO UPPERCASE), ${data.skippedCount} duplicates skipped.`,
         });
         setGoogleSheetLastSync(data.syncInfo);
         fetchTransactions();
@@ -1488,6 +1511,134 @@ export default function TransactionsConsole() {
                   </p>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
+                      <FileSpreadsheet size={14} className="text-emerald-400" /> Specific Sheet Tab Name (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. July 2026, Sheet1, Daily Transactions"
+                      value={googleSheetName}
+                      onChange={(e) => setGoogleSheetName(e.target.value)}
+                      className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
+                    />
+                    <p className="text-[10px] text-gray-500">Leave blank to auto-fetch from the first/default sheet tab.</p>
+                  </div>
+
+                  <div className="space-y-1.5 flex flex-col justify-between">
+                    <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
+                      🔤 Text Case Transformation
+                    </label>
+                    <div className="p-2.5 bg-emerald-950/30 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs flex items-center gap-2 font-semibold">
+                      <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                      <span>Auto-Convert All Lowercase to UPPERCASE</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ADVANCED COLUMN MAPPING (OPTIONAL) */}
+                <div className="pt-2 border-t border-white/5 space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedMapping(!showAdvancedMapping)}
+                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>{showAdvancedMapping ? "▼ Hide" : "▶ Show"} Specific Column Mapping (Optional)</span>
+                    <span className="text-[10px] text-gray-500 font-normal">Map Column Letters like A, B, C or custom headers</span>
+                  </button>
+
+                  {showAdvancedMapping && (
+                    <div className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-3 animate-in fade-in duration-150">
+                      <p className="text-[11px] text-gray-400">
+                        Specify exact column letters (e.g. <strong>A</strong>, <strong>B</strong>, <strong>C</strong>) or custom header names. Leave blank to use intelligent auto-detection.
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+                        <div>
+                          <label className="text-[11px] text-gray-400">Date Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. A"
+                            value={googleSheetCustomCols.date || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, date: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400">Amount Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. B"
+                            value={googleSheetCustomCols.amount || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, amount: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400">Customer Name Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. C"
+                            value={googleSheetCustomCols.customerName || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, customerName: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400">Vehicle No Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. D"
+                            value={googleSheetCustomCols.vehicleNumber || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, vehicleNumber: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400">Payment Mode Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. E"
+                            value={googleSheetCustomCols.paymentMode || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, paymentMode: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400">Service / Wash Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. F"
+                            value={googleSheetCustomCols.serviceOpted || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, serviceOpted: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400">Staff / Employee Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. G"
+                            value={googleSheetCustomCols.assignedEmployee || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, assignedEmployee: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-gray-400">Notes / Remarks Col</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. H"
+                            value={googleSheetCustomCols.notes || ""}
+                            onChange={(e) => setGoogleSheetCustomCols({ ...googleSheetCustomCols, notes: e.target.value })}
+                            className="w-full bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-1.5 text-white uppercase text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="pt-2 border-t border-white/5 flex items-center justify-between">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -1519,7 +1670,7 @@ export default function TransactionsConsole() {
                     className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-emerald-900/30 cursor-pointer"
                   >
                     {googleSheetSyncing ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
-                    {googleSheetSyncing ? "Fetching Data from Sheet..." : "Sync & Auto-Fetch Now"}
+                    {googleSheetSyncing ? "Fetching & Uppercasing Data..." : "Sync & Auto-Fetch Now (UPPERCASE)"}
                   </button>
                 </div>
               </div>
@@ -1538,6 +1689,10 @@ export default function TransactionsConsole() {
                         </span>
                       </div>
                       <div className="flex justify-between py-1.5 border-b border-white/5">
+                        <span className="text-gray-400">Sheet Tab:</span>
+                        <span className="text-emerald-400 font-bold">{googleSheetLastSync.sheetName || "Primary Sheet"}</span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-white/5">
                         <span className="text-gray-400">Rows in Sheet:</span>
                         <span className="text-white font-medium">{googleSheetLastSync.totalRowsInSheet || 0}</span>
                       </div>
@@ -1550,8 +1705,8 @@ export default function TransactionsConsole() {
                         <span className="text-gray-300 font-medium">{googleSheetLastSync.skippedCount || 0}</span>
                       </div>
                       <div className="flex justify-between py-1.5">
-                        <span className="text-gray-400">Deduplication:</span>
-                        <span className="text-emerald-400 font-semibold">Active &amp; Protected</span>
+                        <span className="text-gray-400">Uppercase Engine:</span>
+                        <span className="text-emerald-400 font-semibold">Enabled (ALL CAPS)</span>
                       </div>
                     </div>
                   ) : (

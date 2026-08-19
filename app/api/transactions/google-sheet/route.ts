@@ -3,21 +3,36 @@ import { NextResponse } from "next/server";
 import { requireRoles } from "@/lib/apiAuth";
 import { matchServiceWithPrice } from "@/lib/serviceMatcher";
 
-// Helper to convert any Google Sheet link into a direct CSV export URL
-export function convertToGoogleSheetCsvUrl(rawUrl: string): string {
+// Helper to convert column letter (e.g. 'A', 'B', 'AA') to 0-indexed column index
+function columnLetterToIndex(letter: string): number {
+  const clean = letter.trim().toUpperCase();
+  if (/^[A-Z]+$/.test(clean)) {
+    let index = 0;
+    for (let i = 0; i < clean.length; i++) {
+      index = index * 26 + (clean.charCodeAt(i) - 64);
+    }
+    return index - 1;
+  }
+  const num = parseInt(clean, 10);
+  if (!isNaN(num) && num >= 1) return num - 1;
+  return -1;
+}
+
+// Helper to convert any Google Sheet link into a direct CSV export URL for a specific sheet tab
+export function convertToGoogleSheetCsvUrl(rawUrl: string, sheetName?: string): string {
   const trimmed = rawUrl.trim();
   if (!trimmed) return "";
-
-  // Already a direct CSV export or publish link
-  if (trimmed.includes("/export?format=csv") || trimmed.includes("tqx=out:csv")) {
-    return trimmed;
-  }
 
   // Matches https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/...
   const match = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   if (match && match[1]) {
     const spreadsheetId = match[1];
-    
+
+    // If specific sheet tab name is provided, use Google Visualization query format
+    if (sheetName && sheetName.trim()) {
+      return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName.trim())}`;
+    }
+
     // Check if a specific gid (sheet tab) is in the URL (e.g. #gid=12345 or ?gid=12345)
     const gidMatch = trimmed.match(/gid=([0-9]+)/);
     if (gidMatch && gidMatch[1]) {
@@ -102,8 +117,27 @@ function normalizeDate(rawDate: string): string {
   return new Date().toISOString().split("T")[0];
 }
 
-// Intelligent Header Mapping
-function findColumnIndex(headers: string[], possibleNames: string[]): number {
+// Helper to convert any value to UPPERCASE string safely
+function toUpperStr(val: any): string | null {
+  if (val === undefined || val === null) return null;
+  const s = String(val).trim();
+  return s.length > 0 ? s.toUpperCase() : null;
+}
+
+// Intelligent Header Mapping with fallback to user-specified column letters/indexes
+function findColumnIndex(headers: string[], possibleNames: string[], customOverride?: string): number {
+  if (customOverride && customOverride.trim()) {
+    const customClean = customOverride.trim();
+    // If it's a letter (e.g. 'A', 'B', 'C') or 1-based number
+    if (/^[A-Za-z]+$/.test(customClean) || /^\d+$/.test(customClean)) {
+      const idx = columnLetterToIndex(customClean);
+      if (idx >= 0 && idx < headers.length) return idx;
+    }
+    // Check if custom override matches a header name exactly
+    const exactIdx = headers.findIndex(h => h.trim().toLowerCase() === customClean.toLowerCase());
+    if (exactIdx !== -1) return exactIdx;
+  }
+
   const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
   for (const name of possibleNames) {
     const cleanTarget = name.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -120,9 +154,11 @@ export async function GET() {
   }
 
   try {
-    const [urlSetting, autoSyncSetting, lastSyncSetting] = await Promise.all([
+    const [urlSetting, sheetNameSetting, autoSyncSetting, customColsSetting, lastSyncSetting] = await Promise.all([
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_transactions_url" } }),
+      prisma.systemSetting.findUnique({ where: { key: "google_sheet_transactions_sheet_name" } }),
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_auto_sync_enabled" } }),
+      prisma.systemSetting.findUnique({ where: { key: "google_sheet_transactions_custom_columns" } }),
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_last_sync_info" } }),
     ]);
 
@@ -135,10 +171,21 @@ export async function GET() {
       }
     }
 
+    let customColumns = {};
+    if (customColsSetting?.value) {
+      try {
+        customColumns = JSON.parse(customColsSetting.value);
+      } catch {
+        customColumns = {};
+      }
+    }
+
     return NextResponse.json({
       success: true,
       sheetUrl: urlSetting?.value || "",
+      sheetName: sheetNameSetting?.value || "",
       autoSync: autoSyncSetting?.value === "true",
+      customColumns,
       lastSync: lastSyncInfo,
     });
   } catch (error: any) {
@@ -157,7 +204,7 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
-    const { sheetUrl, autoSync } = body;
+    const { sheetUrl, sheetName, autoSync, customColumns } = body;
 
     if (sheetUrl !== undefined) {
       await prisma.systemSetting.upsert({
@@ -167,11 +214,27 @@ export async function PUT(req: Request) {
       });
     }
 
+    if (sheetName !== undefined) {
+      await prisma.systemSetting.upsert({
+        where: { key: "google_sheet_transactions_sheet_name" },
+        update: { value: String(sheetName).trim() },
+        create: { key: "google_sheet_transactions_sheet_name", value: String(sheetName).trim() },
+      });
+    }
+
     if (autoSync !== undefined) {
       await prisma.systemSetting.upsert({
         where: { key: "google_sheet_auto_sync_enabled" },
         update: { value: String(autoSync) },
         create: { key: "google_sheet_auto_sync_enabled", value: String(autoSync) },
+      });
+    }
+
+    if (customColumns !== undefined) {
+      await prisma.systemSetting.upsert({
+        where: { key: "google_sheet_transactions_custom_columns" },
+        update: { value: JSON.stringify(customColumns) },
+        create: { key: "google_sheet_transactions_custom_columns", value: JSON.stringify(customColumns) },
       });
     }
 
@@ -195,11 +258,16 @@ export async function POST(req: Request) {
 
   try {
     let sheetUrl = "";
+    let sheetName = "";
+    let customColumns: Record<string, string> = {};
+
     try {
       const body = await req.json();
       sheetUrl = body.sheetUrl || "";
+      sheetName = body.sheetName || "";
+      customColumns = body.customColumns || {};
     } catch {
-      // Body may be empty if triggered as a simple sync action
+      // Body may be empty if triggered as simple sync
     }
 
     // If no sheetUrl provided in body, load from database setting or env
@@ -210,6 +278,24 @@ export async function POST(req: Request) {
       sheetUrl = urlSetting?.value || process.env.GOOGLE_SHEET_TRANSACTIONS_URL || "";
     }
 
+    if (!sheetName) {
+      const sheetNameSetting = await prisma.systemSetting.findUnique({
+        where: { key: "google_sheet_transactions_sheet_name" }
+      });
+      sheetName = sheetNameSetting?.value || "";
+    }
+
+    if (Object.keys(customColumns).length === 0) {
+      const customColsSetting = await prisma.systemSetting.findUnique({
+        where: { key: "google_sheet_transactions_custom_columns" }
+      });
+      if (customColsSetting?.value) {
+        try {
+          customColumns = JSON.parse(customColsSetting.value);
+        } catch {}
+      }
+    }
+
     if (!sheetUrl.trim()) {
       return NextResponse.json(
         { success: false, message: "Please provide or save a Google Sheet URL first." },
@@ -217,7 +303,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const csvUrl = convertToGoogleSheetCsvUrl(sheetUrl);
+    const csvUrl = convertToGoogleSheetCsvUrl(sheetUrl, sheetName);
 
     // Fetch CSV content from Google Sheets
     const response = await fetch(csvUrl, {
@@ -231,7 +317,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: `Unable to access Google Sheet (HTTP ${response.status}). Please make sure your sheet is set to 'Anyone with the link can view' or published to web as CSV.`,
+          message: `Unable to access Google Sheet (HTTP ${response.status}). Please make sure your sheet is set to 'Anyone with the link can view' or published to web as CSV.${sheetName ? ` Also verify sheet tab '${sheetName}' exists.` : ''}`,
         },
         { status: 400 }
       );
@@ -242,34 +328,34 @@ export async function POST(req: Request) {
 
     if (rows.length < 2) {
       return NextResponse.json(
-        { success: false, message: "Google Sheet contains no data rows (only header or empty)." },
+        { success: false, message: `Google Sheet contains no data rows in sheet '${sheetName || "Default"}'.` },
         { status: 400 }
       );
     }
 
     const headers = rows[0];
 
-    // Find column indexes
-    const dateIdx = findColumnIndex(headers, ["date", "transdate", "entrydate", "bookingdate", "day", "timestamp"]);
-    const amountIdx = findColumnIndex(headers, ["amount", "cost", "price", "total", "paid", "billamount", "charge"]);
-    const paymentModeIdx = findColumnIndex(headers, ["paymentmode", "mode", "paymenttype", "payment", "type", "method", "cashupi"]);
-    const timeIdx = findColumnIndex(headers, ["time", "timing", "hours", "slot"]);
-    const customerNameIdx = findColumnIndex(headers, ["customername", "name", "customer", "client", "user", "owner"]);
-    const customerMobileIdx = findColumnIndex(headers, ["customermobile", "phone", "mobile", "contact", "phonenumber", "mobilenumber"]);
-    const vehicleNumberIdx = findColumnIndex(headers, ["vehiclenumber", "vehicleno", "platenumber", "carnumber", "carno", "regnumber", "numberplate"]);
-    const vehicleTypeIdx = findColumnIndex(headers, ["vehicletype", "cartype", "vehiclemodel", "model"]);
-    const serviceOptedIdx = findColumnIndex(headers, ["serviceopted", "service", "washtype", "package", "servicename", "wash"]);
-    const addonServicesIdx = findColumnIndex(headers, ["addonservices", "addons", "extraservices", "extras"]);
-    const assignedEmployeeIdx = findColumnIndex(headers, ["assignedemployee", "staff", "employee", "washer", "worker", "technician"]);
-    const discountAmountIdx = findColumnIndex(headers, ["discountamount", "discount", "coupondiscount"]);
-    const notesIdx = findColumnIndex(headers, ["notes", "remarks", "comment", "description"]);
-    const invoiceIdIdx = findColumnIndex(headers, ["invoiceid", "invoiceno", "billno", "refid", "txnid"]);
+    // Find column indexes (with custom letter/header overrides)
+    const dateIdx = findColumnIndex(headers, ["date", "transdate", "entrydate", "bookingdate", "day", "timestamp"], customColumns.date);
+    const amountIdx = findColumnIndex(headers, ["amount", "cost", "price", "total", "paid", "billamount", "charge"], customColumns.amount);
+    const paymentModeIdx = findColumnIndex(headers, ["paymentmode", "mode", "paymenttype", "payment", "type", "method", "cashupi"], customColumns.paymentMode);
+    const timeIdx = findColumnIndex(headers, ["time", "timing", "hours", "slot"], customColumns.time);
+    const customerNameIdx = findColumnIndex(headers, ["customername", "name", "customer", "client", "user", "owner"], customColumns.customerName);
+    const customerMobileIdx = findColumnIndex(headers, ["customermobile", "phone", "mobile", "contact", "phonenumber", "mobilenumber"], customColumns.customerMobile);
+    const vehicleNumberIdx = findColumnIndex(headers, ["vehiclenumber", "vehicleno", "platenumber", "carnumber", "carno", "regnumber", "numberplate"], customColumns.vehicleNumber);
+    const vehicleTypeIdx = findColumnIndex(headers, ["vehicletype", "cartype", "vehiclemodel", "model"], customColumns.vehicleType);
+    const serviceOptedIdx = findColumnIndex(headers, ["serviceopted", "service", "washtype", "package", "servicename", "wash"], customColumns.serviceOpted);
+    const addonServicesIdx = findColumnIndex(headers, ["addonservices", "addons", "extraservices", "extras"], customColumns.addonServices);
+    const assignedEmployeeIdx = findColumnIndex(headers, ["assignedemployee", "staff", "employee", "washer", "worker", "technician"], customColumns.assignedEmployee);
+    const discountAmountIdx = findColumnIndex(headers, ["discountamount", "discount", "coupondiscount"], customColumns.discountAmount);
+    const notesIdx = findColumnIndex(headers, ["notes", "remarks", "comment", "description"], customColumns.notes);
+    const invoiceIdIdx = findColumnIndex(headers, ["invoiceid", "invoiceno", "billno", "refid", "txnid"], customColumns.invoiceId);
 
     if (dateIdx === -1 || amountIdx === -1) {
       return NextResponse.json(
         {
           success: false,
-          message: `Required columns not found in Google Sheet. Found headers: [${headers.join(", ")}]. Please include at least 'Date' and 'Amount' headers.`,
+          message: `Required columns not found in Google Sheet '${sheetName || "Default"}'. Found headers: [${headers.join(", ")}]. Please include at least 'Date' and 'Amount' headers or specify column letters in Custom Columns.`,
         },
         { status: 400 }
       );
@@ -293,10 +379,10 @@ export async function POST(req: Request) {
     const existingSignatures = new Set<string>();
     for (const t of existingTransactions) {
       // Signature format: date|amount|paymentMode|vehicleNumber|customerName
-      const sig = `${t.date}|${t.amount}|${(t.paymentMode || "").toLowerCase()}|${(t.vehicleNumber || "").toLowerCase()}|${(t.customerName || "").toLowerCase()}`;
+      const sig = `${t.date}|${t.amount}|${(t.paymentMode || "").toUpperCase()}|${(t.vehicleNumber || "").toUpperCase()}|${(t.customerName || "").toUpperCase()}`;
       existingSignatures.add(sig);
       if (t.invoiceId) {
-        existingSignatures.add(`inv:${t.invoiceId.toLowerCase()}`);
+        existingSignatures.add(`inv:${t.invoiceId.toUpperCase()}`);
       }
     }
 
@@ -310,7 +396,7 @@ export async function POST(req: Request) {
       const row = rows[r];
       const rawDate = row[dateIdx] || "";
       const rawAmount = row[amountIdx] || "";
-      const rawPaymentMode = paymentModeIdx !== -1 ? row[paymentModeIdx] : "Cash";
+      const rawPaymentMode = paymentModeIdx !== -1 ? row[paymentModeIdx] : "CASH";
 
       // Clean amount
       const cleanedAmountStr = String(rawAmount).replace(/[^0-9.]/g, "");
@@ -322,22 +408,24 @@ export async function POST(req: Request) {
       }
 
       const normalizedDateStr = normalizeDate(rawDate);
-      const paymentModeStr = (rawPaymentMode || "Cash").trim();
-      const customerNameStr = customerNameIdx !== -1 && row[customerNameIdx] ? row[customerNameIdx].trim() : null;
+      
+      // ALL LOWERCASE LETTERS CONVERTED TO UPPERCASE:
+      const paymentModeStr = toUpperStr(rawPaymentMode) || "CASH";
+      const customerNameStr = customerNameIdx !== -1 ? toUpperStr(row[customerNameIdx]) : null;
       const customerMobileStr = customerMobileIdx !== -1 && row[customerMobileIdx] ? row[customerMobileIdx].trim() : null;
-      const vehicleNumberStr = vehicleNumberIdx !== -1 && row[vehicleNumberIdx] ? row[vehicleNumberIdx].trim().toUpperCase() : null;
-      let vehicleTypeStr = vehicleTypeIdx !== -1 && row[vehicleTypeIdx] ? row[vehicleTypeIdx].trim() : null;
-      let serviceOptedStr = serviceOptedIdx !== -1 && row[serviceOptedIdx] ? row[serviceOptedIdx].trim() : null;
-      const addonServicesStr = addonServicesIdx !== -1 && row[addonServicesIdx] ? row[addonServicesIdx].trim() : null;
-      const assignedEmployeeStr = assignedEmployeeIdx !== -1 && row[assignedEmployeeIdx] ? row[assignedEmployeeIdx].trim() : null;
+      const vehicleNumberStr = vehicleNumberIdx !== -1 ? toUpperStr(row[vehicleNumberIdx]) : null;
+      let vehicleTypeStr = vehicleTypeIdx !== -1 ? toUpperStr(row[vehicleTypeIdx]) : null;
+      let serviceOptedStr = serviceOptedIdx !== -1 ? toUpperStr(row[serviceOptedIdx]) : null;
+      const addonServicesStr = addonServicesIdx !== -1 ? toUpperStr(row[addonServicesIdx]) : null;
+      const assignedEmployeeStr = assignedEmployeeIdx !== -1 ? toUpperStr(row[assignedEmployeeIdx]) : null;
       const discountAmountVal = discountAmountIdx !== -1 && row[discountAmountIdx] ? parseInt(row[discountAmountIdx].replace(/[^0-9.]/g, ""), 10) || 0 : 0;
-      const notesStr = notesIdx !== -1 && row[notesIdx] ? row[notesIdx].trim() : null;
+      const rawNotesStr = notesIdx !== -1 ? toUpperStr(row[notesIdx]) : null;
       const timeStr = timeIdx !== -1 && row[timeIdx] ? row[timeIdx].trim() : null;
-      const invoiceIdVal = invoiceIdIdx !== -1 && row[invoiceIdIdx] ? row[invoiceIdIdx].trim() : null;
+      const invoiceIdVal = invoiceIdIdx !== -1 ? toUpperStr(row[invoiceIdIdx]) : null;
 
       // Check for deduplication
-      const currentSignature = `${normalizedDateStr}|${parsedAmount}|${paymentModeStr.toLowerCase()}|${(vehicleNumberStr || "").toLowerCase()}|${(customerNameStr || "").toLowerCase()}`;
-      if (existingSignatures.has(currentSignature) || (invoiceIdVal && existingSignatures.has(`inv:${invoiceIdVal.toLowerCase()}`))) {
+      const currentSignature = `${normalizedDateStr}|${parsedAmount}|${paymentModeStr}|${vehicleNumberStr || ""}|${customerNameStr || ""}`;
+      if (existingSignatures.has(currentSignature) || (invoiceIdVal && existingSignatures.has(`inv:${invoiceIdVal}`))) {
         skippedCount++;
         continue;
       }
@@ -346,8 +434,8 @@ export async function POST(req: Request) {
       if (!serviceOptedStr || !vehicleTypeStr) {
         const match = await matchServiceWithPrice(parsedAmount);
         if (match) {
-          if (!serviceOptedStr) serviceOptedStr = match.serviceOpted;
-          if (!vehicleTypeStr) vehicleTypeStr = match.vehicleType;
+          if (!serviceOptedStr) serviceOptedStr = toUpperStr(match.serviceOpted);
+          if (!vehicleTypeStr) vehicleTypeStr = toUpperStr(match.vehicleType);
         }
       }
 
@@ -356,7 +444,7 @@ export async function POST(req: Request) {
       newTransactionsData.push({
         date: normalizedDateStr,
         amount: parsedAmount,
-        paymentMode: paymentModeStr || "Cash",
+        paymentMode: paymentModeStr,
         time: timeStr,
         customerName: customerNameStr,
         customerMobile: customerMobileStr,
@@ -367,14 +455,14 @@ export async function POST(req: Request) {
         assignedEmployee: assignedEmployeeStr,
         discountAmount: discountAmountVal,
         finalAmount,
-        notes: notesStr ? `[Google Sheets Auto-Sync] ${notesStr}` : "[Google Sheets Auto-Sync]",
-        createdBy: "Google Sheet Sync",
+        notes: rawNotesStr ? `[GOOGLE SHEETS AUTO-SYNC] ${rawNotesStr}` : "[GOOGLE SHEETS AUTO-SYNC]",
+        createdBy: "GOOGLE SHEET SYNC",
       });
 
       // Mark signature as used so within-sheet duplicates are also skipped
       existingSignatures.add(currentSignature);
       if (invoiceIdVal) {
-        existingSignatures.add(`inv:${invoiceIdVal.toLowerCase()}`);
+        existingSignatures.add(`inv:${invoiceIdVal}`);
       }
     }
 
@@ -394,6 +482,7 @@ export async function POST(req: Request) {
     const syncInfo = {
       timestamp: new Date().toISOString(),
       sheetUrl,
+      sheetName: sheetName || "Primary Sheet",
       totalRowsInSheet: rows.length - 1,
       addedCount,
       skippedCount,
@@ -409,7 +498,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Sync complete! ${addedCount} new transactions added, ${skippedCount} duplicate/empty rows skipped.`,
+      message: `Sync complete from sheet '${sheetName || "Default"}'! ${addedCount} new transactions added (ALL CONVERTED TO UPPERCASE), ${skippedCount} duplicate/empty rows skipped.`,
       addedCount,
       skippedCount,
       totalRows: rows.length - 1,
