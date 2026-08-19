@@ -25,6 +25,7 @@ interface BookingRequestBody {
   phoneNumber?: string;
   details?: BookingRequestDetail[];
   pickupDrop?: boolean;
+  pickupAddress?: string;
   promoCode?: string;
   bookingDate?: string;
   bookingTime?: string;
@@ -181,6 +182,11 @@ export async function POST(req: Request) {
     }
 
     const primaryServiceId = storedDetails[0]?.serviceId || null;
+    const formattedNotes = [
+      body.pickupDrop && body.pickupAddress ? `Pickup Address: ${body.pickupAddress}` : "",
+      body.notes || ""
+    ].filter(Boolean).join(" | ");
+
     const booking = await prisma.booking.create({
       data: {
         customerName,
@@ -192,7 +198,7 @@ export async function POST(req: Request) {
         paymentMode: body.paymentMode || "Cash",
         discount: pricing.discount,
         finalAmount: pricing.total,
-        notes: body.notes || "",
+        notes: formattedNotes,
         referralCode: body.referralCode || null,
         customerId: customer.id,
         serviceId: primaryServiceId,

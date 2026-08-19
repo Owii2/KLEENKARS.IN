@@ -33,11 +33,15 @@ export interface PricingDetail {
 export const pickupDropPricePerVehicle = 100;
 
 export const includedAddonNamesByServiceName: Record<string, string[]> = {
-  "Classic Wash": ["Vacuum (Addon)"],
-  "Premium Wash": ["Dashboard Polish (Addon)", "Tyre Shine (Addon)", "Perfume Sticker (Addon)"],
-  "Rainy Day Shine": ["Dashboard Polish (Addon)", "Tyre Shine (Addon)", "Body Wax (Addon)", "Perfume Sticker (Addon)"],
-  "Cabin Revive": ["Vacuum (Addon)", "Dashboard Polish (Addon)", "Perfume Sticker (Addon)"],
-  "Paint Restoration": ["Body Wax (Addon)"],
+  "Classic Wash": ["vacuum"],
+  "Premium Wash": ["vacuum", "dashboard polish", "tyre shine", "perfume", "perfume sticker", "hanging perfume"],
+  "Rainy Day Shine": ["vacuum", "dashboard polish", "tyre shine", "body wax", "perfume", "perfume sticker", "hanging perfume"],
+  "Cabin Revive": ["vacuum", "dashboard polish", "perfume", "perfume sticker", "hanging perfume"],
+  "Interior Deep Clean": ["vacuum", "dashboard polish", "perfume", "perfume sticker", "hanging perfume"],
+  "Paint Restoration": ["body wax"],
+  "Paint Correction": ["body wax"],
+  "Ceramic Coating": ["vacuum", "dashboard polish", "tyre shine", "body wax", "perfume", "perfume sticker", "hanging perfume"],
+  "PPF Protection": ["vacuum", "dashboard polish", "tyre shine", "body wax", "perfume", "perfume sticker", "hanging perfume"],
 };
 
 export const vehicleSuffixMap: Record<string, VehicleType[]> = {
@@ -75,10 +79,15 @@ export const getBaseServiceName = (serviceName: string) => {
 };
 
 export const getIncludedAddonIds = (serviceName: string, services: PricingService[]) => {
-  const includedAddonNames = includedAddonNamesByServiceName[getBaseServiceName(serviceName)] || [];
+  const baseName = getBaseServiceName(serviceName);
+  const includedKeywords = includedAddonNamesByServiceName[baseName] || [];
 
   return services
-    .filter((service) => service.category === "Addon" && includedAddonNames.includes(service.name))
+    .filter((service) => {
+      if (service.category !== "Addon") return false;
+      const addonNameLower = service.name.toLowerCase();
+      return includedKeywords.some((kw) => addonNameLower.includes(kw.toLowerCase()));
+    })
     .map((service) => service.id);
 };
 

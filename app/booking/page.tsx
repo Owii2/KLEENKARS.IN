@@ -14,10 +14,10 @@ import {
 interface Service {
   id: string;
   name: string;
-  price: number; // Default price, or price for a base vehicle type
+  price: number;
   category: string;
   includedAddonIds?: string[];
-  vehiclePrices?: Partial<Record<VehicleType, number>>; // Price variations per vehicle type
+  vehiclePrices?: Partial<Record<VehicleType, number>>;
   vehicleServiceIds?: Partial<Record<VehicleType, string>>;
 }
 
@@ -39,10 +39,27 @@ interface VehicleDetail {
   addons: string[];
 }
 
+const ALIGARH_LANDMARKS = [
+  "Anoop Shahar Road, Aligarh",
+  "Medical Road, Aligarh",
+  "Civil Lines, Aligarh",
+  "Ramghat Road, Aligarh",
+  "Dodhpur, Aligarh",
+  "Marris Road, Aligarh",
+  "Centre Point, Aligarh",
+  "Samad Road, Aligarh",
+  "GT Road, Aligarh",
+  "Jamalpur, Aligarh",
+  "Sir Syed Nagar, Aligarh",
+  "Kwesi / Aligarh Junction Area",
+  "Shah Jamal, Aligarh",
+  "Mustafa Market, Aligarh"
+];
+
 export default function BookingPage() {
   const [dbServices, setDbServices] = useState<Service[]>([]);
   const [dbOffers, setDbOffers] = useState<Offer[]>([]);
-  const [displayServices, setDisplayServices] = useState<Service[]>([]); // New state for consolidated services
+  const [displayServices, setDisplayServices] = useState<Service[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [optionsError, setOptionsError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,9 +73,8 @@ export default function BookingPage() {
         const activeServices: Service[] = servicesData.services.filter((s) => s.isActive);
         setDbServices(activeServices);
 
-        // Process services to consolidate vehicle-specific options
         const processedServices: Service[] = [];
-        const serviceMap: Record<string, Service> = {}; // To store generic services
+        const serviceMap: Record<string, Service> = {};
 
         activeServices.forEach(svc => {
           const match = svc.name.match(vehicleSpecificServicePattern);
@@ -67,12 +83,11 @@ export default function BookingPage() {
             const vehicleTypes = getVehicleTypesForSuffix(match[2]);
 
             if (!serviceMap[genericName]) {
-              // Create a new generic service entry
               serviceMap[genericName] = {
-                ...svc, // Copy existing properties like category
-                id: `service:${genericName}`, // Use stable UI-only ID for grouped services
+                ...svc,
+                id: `service:${genericName}`,
                 name: genericName,
-                price: 0, // Will be overridden by vehiclePrices
+                price: 0,
                 vehiclePrices: {},
                 vehicleServiceIds: {},
                 includedAddonIds: getIncludedAddonIds(genericName, activeServices),
@@ -90,7 +105,6 @@ export default function BookingPage() {
               };
             });
           } else {
-            // Add-ons and other non-vehicle-specific services
             processedServices.push({
               ...svc,
               includedAddonIds: getIncludedAddonIds(svc.name, activeServices),
@@ -98,7 +112,6 @@ export default function BookingPage() {
           }
         });
 
-        // Add consolidated generic services to processedServices
         Object.values(serviceMap).forEach(genericSvc => processedServices.push(genericSvc));
         setDisplayServices(processedServices);
       } else {
@@ -115,7 +128,6 @@ export default function BookingPage() {
     });
   }, []);
 
-  // Filter services for display based on displayServices
   const washServices = displayServices.filter(s => s.category === 'Wash');
   const detailServices = displayServices.filter(s => s.category === 'Detailing');
   const availableAddons = displayServices.filter(s => s.category === 'Addon');
@@ -150,7 +162,10 @@ export default function BookingPage() {
   };
 
   const getIncludedAddonIdsForDetail = (detail: VehicleDetail) => {
-    return getSelectedService(detail)?.includedAddonIds || [];
+    const selectedService = getSelectedService(detail);
+    if (!selectedService) return [];
+    
+    return getIncludedAddonIds(selectedService.name, dbServices);
   };
 
   const isAddonIncluded = (detail: VehicleDetail, addonId: string) => {
@@ -168,7 +183,6 @@ export default function BookingPage() {
   useEffect(() => {
     setVehicleDetails((currentDetails) => {
       const newDetails = [...currentDetails];
-      // Adjust the array size to match the number of vehicles
       while (newDetails.length < vehiclesCount) {
         newDetails.push({ vehicleType: "", serviceId: "", addons: [] });
       }
@@ -180,11 +194,48 @@ export default function BookingPage() {
   }, [vehiclesCount]);
 
   const [pickupDrop, setPickupDrop] = useState(false);
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
 
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   
   const [promoCode, setPromoCode] = useState("");
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await res.json();
+          if (data && data.display_name) {
+            setPickupAddress(data.display_name);
+          } else {
+            setPickupAddress(`GPS Location (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`);
+          }
+        } catch {
+          setPickupAddress(`GPS Location (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        console.error(err);
+        setIsLocating(false);
+        alert("Unable to retrieve location. Please type your pickup address manually.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const calculateTotal = () => {
     let subtotal = 0;
@@ -238,7 +289,8 @@ export default function BookingPage() {
       }
     } else if (field === 'serviceId' && typeof value === 'string') {
       newDetails[index].serviceId = value;
-      const includedAddonIds = displayServices.find((service) => service.id === value)?.includedAddonIds || [];
+      const selectedService = displayServices.find((service) => service.id === value);
+      const includedAddonIds = selectedService ? getIncludedAddonIds(selectedService.name, dbServices) : [];
       newDetails[index].addons = newDetails[index].addons.filter((addonId) => !includedAddonIds.includes(addonId));
     }
     setVehicleDetails(newDetails);
@@ -285,6 +337,11 @@ export default function BookingPage() {
       }
     }
 
+    if (pickupDrop && !pickupAddress.trim()) {
+      alert("Please enter or select your pickup & drop address");
+      return;
+    }
+
     if (!bookingDate) {
       alert("Select booking date");
       return;
@@ -319,6 +376,7 @@ export default function BookingPage() {
             };
           }),
           pickupDrop,
+          pickupAddress: pickupAddress.trim(),
           promoCode,
           bookingDate,
           bookingTime,
@@ -360,6 +418,7 @@ export default function BookingPage() {
           return [...paidAddons, ...includedAddons];
         }),
         pickupDrop,
+        pickupAddress: pickupAddress.trim(),
       });
 
       window.localStorage.setItem("bookings", JSON.stringify(localBookings));
@@ -371,6 +430,7 @@ export default function BookingPage() {
       setVehiclesCount(1);
       setVehicleDetails([{ vehicleType: "", serviceId: "", addons: [] }]);
       setPickupDrop(false);
+      setPickupAddress("");
       setBookingDate("");
       setBookingTime("");
       setPromoCode("");
@@ -383,32 +443,22 @@ export default function BookingPage() {
   };
 
   return (
-
     <main className="min-h-screen bg-black text-white p-5 sm:p-8">
-
       <div className="max-w-3xl mx-auto">
-
         <h1 className="text-5xl font-bold text-red-500 mb-10">
           Book Your Wash
         </h1>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-        >
-
+        <form onSubmit={handleSubmit} className="space-y-6">
           <input
             type="text"
             placeholder="Customer Name"
             value={customerName}
-            onChange={(e) =>
-              setCustomerName(e.target.value)
-            }
+            onChange={(e) => setCustomerName(e.target.value)}
             className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
           />
 
           <div className="flex">
-
             <div className="bg-zinc-800 border border-zinc-700 px-4 flex items-center rounded-l-xl">
               +91
             </div>
@@ -418,21 +468,14 @@ export default function BookingPage() {
               placeholder="Enter 10 digit mobile number"
               maxLength={10}
               value={phoneNumber}
-              onChange={(e) =>
-                setPhoneNumber(
-                  e.target.value.replace(/\D/g, "")
-                )
-              }
+              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
               className="w-full p-4 rounded-r-xl bg-zinc-900 border border-zinc-700 outline-none"
             />
-
           </div>
 
           <select
             value={vehiclesCount}
-            onChange={(e) =>
-              setVehiclesCount(parseInt(e.target.value))
-            }
+            onChange={(e) => setVehiclesCount(parseInt(e.target.value))}
             className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
           >
             <option value={1}>1 Vehicle</option>
@@ -458,9 +501,7 @@ export default function BookingPage() {
               <h2 className="font-bold text-lg text-red-500">Vehicle {index + 1}</h2>
               <select
                 value={detail.vehicleType}
-                onChange={(e) =>
-                  handleDetailChange(index, 'vehicleType', e.target.value)
-                }
+                onChange={(e) => handleDetailChange(index, 'vehicleType', e.target.value)}
                 className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
               >
                 <option value="">Select Vehicle Type</option>
@@ -481,9 +522,7 @@ export default function BookingPage() {
               {detail.vehicleType && (
                 <select
                   value={detail.serviceId}
-                  onChange={(e) => {
-                    handleDetailChange(index, 'serviceId', e.target.value);
-                  }}
+                  onChange={(e) => handleDetailChange(index, 'serviceId', e.target.value)}
                   disabled={loadingOptions || Boolean(optionsError)}
                   className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
                 >
@@ -510,23 +549,27 @@ export default function BookingPage() {
                     const included = isAddonIncluded(detail, addon.id);
 
                     return (
-                      <label key={addon.id} className="flex items-center justify-between">
+                      <label key={addon.id} className="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-zinc-800/40">
                         <div className="flex items-center gap-3">
                           <input
                             type="checkbox"
                             checked={detail.addons.includes(addon.id) || included}
                             disabled={included}
                             onChange={() => handleAddonChange(index, addon.id)}
-                            className="accent-red-600 disabled:opacity-70"
+                            className="accent-red-600 disabled:opacity-80 w-4 h-4"
                           />
-                          <span className={included ? "text-gray-400" : ""}>
+                          <span className={included ? "text-green-400 font-semibold" : ""}>
                             {addon.name}
                             {included && (
-                              <span className="ml-2 text-xs font-bold text-green-400">Included</span>
+                              <span className="ml-2 text-xs font-bold bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/40">
+                                ✓ Included in Package
+                              </span>
                             )}
                           </span>
                         </div>
-                        <span>{included ? "Included" : `Rs. ${addon.price}`}</span>
+                        <span className={included ? "text-green-400 font-bold text-xs" : "text-gray-300 text-xs"}>
+                          {included ? "Included" : `Rs. ${addon.price}`}
+                        </span>
                       </label>
                     );
                   })}
@@ -535,29 +578,88 @@ export default function BookingPage() {
             </div>
           ))}
 
-          <label className="flex items-center justify-between bg-zinc-900 p-4 rounded-xl border border-zinc-700">
+          {/* PICKUP AND DROP OPTION & LOCATION SELECTOR */}
+          <div className="space-y-3">
+            <label className="flex items-center justify-between bg-zinc-900 p-4 rounded-xl border border-zinc-700 cursor-pointer">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={pickupDrop}
+                  onChange={() => setPickupDrop(!pickupDrop)}
+                  className="accent-red-600 w-5 h-5"
+                />
+                <div className="flex flex-col">
+                  <span className="font-bold text-white">Doorstep Pickup & Drop</span>
+                  <span className="text-xs text-gray-400">Free vehicle pickup & doorstep return in Aligarh</span>
+                </div>
+              </div>
+              <span className="font-bold text-red-500">Rs. 100</span>
+            </label>
 
-            <div className="flex items-center gap-3">
+            {pickupDrop && (
+              <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-5 space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📍</span> Pickup & Drop Address
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGetCurrentLocation}
+                    disabled={isLocating}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-white px-3 py-1.5 rounded-lg border border-zinc-600 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isLocating ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span>Locating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🎯 Use GPS Location</span>
+                      </>
+                    )}
+                  </button>
+                </div>
 
-              <input
-                type="checkbox"
-                checked={pickupDrop}
-                onChange={() =>
-                  setPickupDrop(!pickupDrop)
-                }
-              />
+                {/* Landmark Selector */}
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-400">
+                    Choose Popular Area in Aligarh:
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setPickupAddress((prev) => (prev ? `${e.target.value}, ${prev}` : e.target.value));
+                      }
+                    }}
+                    className="w-full p-3 rounded-xl bg-black border border-zinc-700 text-xs text-white"
+                  >
+                    <option value="">Select Aligarh Area / Landmark (Optional)</option>
+                    {ALIGARH_LANDMARKS.map((landmark, idx) => (
+                      <option key={idx} value={landmark}>
+                        {landmark}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <span>
-                Pickup & Drop
-              </span>
-
-            </div>
-
-            <span>
-              Rs. 100
-            </span>
-
-          </label>
+                {/* Textarea for address input */}
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-400">
+                    Full House / Street Address:
+                  </label>
+                  <textarea
+                    required={pickupDrop}
+                    rows={3}
+                    placeholder="e.g. House No. 42, Near Medical College Gate 2, Civil Lines, Aligarh"
+                    value={pickupAddress}
+                    onChange={(e) => setPickupAddress(e.target.value)}
+                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500 resize-none"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-2">
             <input
@@ -572,9 +674,7 @@ export default function BookingPage() {
           <input
             type="date"
             value={bookingDate}
-            onChange={(e) =>
-              setBookingDate(e.target.value)
-            }
+            onChange={(e) => setBookingDate(e.target.value)}
             min={new Date().toISOString().split("T")[0]}
             className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
           />
@@ -582,14 +682,11 @@ export default function BookingPage() {
           <input
             type="time"
             value={bookingTime}
-            onChange={(e) =>
-              setBookingTime(e.target.value)
-            }
+            onChange={(e) => setBookingTime(e.target.value)}
             className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
           />
 
           <div className="bg-red-500 p-6 rounded-xl space-y-2">
-
             <div className="flex justify-between text-lg">
               <span>Subtotal:</span>
               <span>Rs. {totals.subtotal}</span>
@@ -608,22 +705,17 @@ export default function BookingPage() {
                 <span>Rs. {totals.total}</span>
               </h2>
             </div>
-
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting || loadingOptions || Boolean(optionsError)}
-            className="w-full bg-red-600 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-zinc-700 transition-all p-5 rounded-xl text-xl font-bold"
+            className="w-full bg-red-600 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-zinc-700 transition-all p-5 rounded-xl text-xl font-bold cursor-pointer"
           >
             {isSubmitting ? "Submitting..." : "Confirm Booking"}
           </button>
-
         </form>
-
       </div>
-
     </main>
-
   );
 }

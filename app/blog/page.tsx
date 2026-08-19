@@ -14,24 +14,28 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogListPage() {
-  // Query all published blog posts from database directly
-  const posts = await prisma.blogPost.findMany({
-    where: {
-      status: "published",
-      publishedAt: {
-        lte: new Date(),
+  let posts: any[] = [];
+  try {
+    posts = await prisma.blogPost.findMany({
+      where: {
+        status: "published",
+        publishedAt: {
+          lte: new Date(),
+        },
       },
-    },
-    include: {
-      author: true,
-      categories: true,
-      tags: true,
-      featuredImage: true,
-    },
-    orderBy: {
-      publishedAt: "desc",
-    },
-  });
+      include: {
+        author: true,
+        categories: true,
+        tags: true,
+        featuredImage: true,
+      },
+      orderBy: {
+        publishedAt: "desc",
+      },
+    });
+  } catch (err) {
+    console.warn("Failed to fetch blog posts during build:", err);
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -107,7 +111,7 @@ export default async function BlogListPage() {
                   <div className="space-y-2.5">
                     {/* Categories */}
                     <div className="flex flex-wrap gap-2">
-                      {post.categories.map((cat) => (
+                      {post.categories?.map((cat: any) => (
                         <span key={cat.id} className="text-[10px] uppercase font-bold tracking-widest text-red-400 bg-red-950/30 border border-red-500/20 px-2 py-0.5 rounded">
                           {cat.name}
                         </span>
