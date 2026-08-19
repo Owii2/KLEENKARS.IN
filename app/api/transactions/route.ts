@@ -67,12 +67,22 @@ export async function GET(req: Request) {
       };
     }
 
+    const sortOrder = searchParams.get("sortOrder") || "desc";
+    const sortBy = searchParams.get("sortBy") || "invoiceId";
+
+    const orderByClause: any[] = [];
+    if (sortBy === "invoiceId") {
+      orderByClause.push({ invoiceId: sortOrder === "asc" ? "asc" : "desc" });
+      orderByClause.push({ date: "desc" });
+    } else {
+      orderByClause.push({ date: sortOrder === "asc" ? "asc" : "desc" });
+      orderByClause.push({ invoiceId: "desc" });
+    }
+    orderByClause.push({ createdAt: "desc" });
+
     const transactions = await prisma.transaction.findMany({
       where,
-      orderBy: [
-        { date: "desc" },
-        { createdAt: "desc" }
-      ],
+      orderBy: orderByClause,
     });
 
     return NextResponse.json({

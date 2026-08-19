@@ -135,6 +135,7 @@ export default function TransactionsConsole() {
   const [filterVehicle, setFilterVehicle] = useState("");
   const [filterEmployee, setFilterEmployee] = useState("");
   const [filterPaymentMode, setFilterPaymentMode] = useState("all");
+  const [invoiceSortOrder, setInvoiceSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -839,12 +840,19 @@ export default function TransactionsConsole() {
     document.body.removeChild(link);
   };
 
-  // Local pagination logic
+  // Local pagination logic with Invoice ID sorting
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
   const currentItems = useMemo(() => {
+    const sorted = [...transactions].sort((a, b) => {
+      const invA = a.invoiceId || "";
+      const invB = b.invoiceId || "";
+      return invoiceSortOrder === "asc"
+        ? invA.localeCompare(invB, undefined, { numeric: true })
+        : invB.localeCompare(invA, undefined, { numeric: true });
+    });
     const start = (currentPage - 1) * itemsPerPage;
-    return transactions.slice(start, start + itemsPerPage);
-  }, [transactions, currentPage]);
+    return sorted.slice(start, start + itemsPerPage);
+  }, [transactions, currentPage, invoiceSortOrder]);
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -1012,7 +1020,16 @@ export default function TransactionsConsole() {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-white/10 text-gray-400">
-                      <th className="py-3 px-4">Invoice ID</th>
+                      <th
+                        className="py-3 px-4 cursor-pointer hover:text-white transition select-none flex items-center gap-1.5"
+                        onClick={() => setInvoiceSortOrder(invoiceSortOrder === "desc" ? "asc" : "desc")}
+                        title="Click to toggle Invoice ID sorting"
+                      >
+                        <span>Invoice ID</span>
+                        <span className="text-[10px] text-red-400 font-bold">
+                          {invoiceSortOrder === "desc" ? "▼ (Latest First)" : "▲ (Oldest First)"}
+                        </span>
+                      </th>
                       <th className="py-3 px-4">Date</th>
                       <th className="py-3 px-4">Customer Details</th>
                       <th className="py-3 px-4">Vehicle</th>

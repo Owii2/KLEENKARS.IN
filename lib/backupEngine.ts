@@ -50,7 +50,7 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
   }
   const transactions = await prisma.transaction.findMany({
     where: txWhere,
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ invoiceId: "desc" }, { date: "desc" }],
   });
 
   const salesHeaders = [
