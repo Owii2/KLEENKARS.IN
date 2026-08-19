@@ -411,11 +411,11 @@ export async function POST(req: Request) {
       const rawAmount = row[amountIdx] || "";
       const rawPaymentMode = paymentModeIdx !== -1 ? row[paymentModeIdx] : "CASH";
 
-      // Clean amount
+      // Clean amount (allow 0 for pending bills)
       const cleanedAmountStr = String(rawAmount).replace(/[^0-9.]/g, "");
-      const parsedAmount = parseInt(cleanedAmountStr, 10);
+      const parsedAmount = cleanedAmountStr === "" ? 0 : parseInt(cleanedAmountStr, 10);
 
-      if (!rawDate || isNaN(parsedAmount) || parsedAmount <= 0) {
+      if (!rawDate || isNaN(parsedAmount) || parsedAmount < 0) {
         skippedCount++;
         continue;
       }
@@ -436,12 +436,16 @@ export async function POST(req: Request) {
       const timeStr = timeIdx !== -1 && row[timeIdx] ? row[timeIdx].trim() : null;
       const invoiceIdVal = invoiceIdIdx !== -1 ? toUpperStr(row[invoiceIdIdx]) : null;
 
-      // Check for deduplication
-      const currentSignature = `${normalizedDateStr}|${parsedAmount}|${paymentModeStr}|${vehicleNumberStr || ""}|${customerNameStr || ""}`;
-      if (existingSignatures.has(currentSignature) || (invoiceIdVal && existingSignatures.has(`inv:${invoiceIdVal}`))) {
+      const currentSignature = invoiceIdVal
+        ? `inv:${invoiceIdVal}`
+        : `${normalizedDateStr}|${parsedAmount}|${paymentModeStr}|${vehicleNumberStr || ""}|${customerNameStr || ""}|${r}`;
+
+      if (existingSignatures.has(currentSignature)) {
         skippedCount++;
         continue;
       }
+
+      existingSignatures.add(currentSignature);
 
       // Auto-detect service and vehicle type from amount if missing
       if (!serviceOptedStr || !vehicleTypeStr) {
