@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import BackupConsole from "@/components/dashboard/BackupConsole";
+import { BarChart3, FileSpreadsheet } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -26,6 +28,7 @@ interface WeeklyData {
 }
 
 export default function ReportsPage() {
+  const [activeTab, setActiveTab] = useState<"analytics" | "backups">("analytics");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
@@ -151,46 +154,77 @@ export default function ReportsPage() {
   return (
     <DashboardLayout title="Analytical Reports & Profits">
       {/* Header with filters */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-red-500">
             Reports & Analytics
           </h1>
           <p className="text-gray-400 mt-1 text-sm">
-            Evaluate store gross profits, operating expenses, work order metrics, and visual performance scales.
+            Evaluate store gross profits, operating expenses, work order metrics, and monthly CSV data backups.
           </p>
         </div>
 
-        {/* Filter triggers */}
-        <div className="flex items-center bg-[#0b0b0b] border border-gray-800 p-1.5 rounded-xl self-start md:self-auto">
-          <button
-            onClick={() => setTimeFilter("all")}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
-              timeFilter === "all" ? "bg-red-650 text-white" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            All-Time
-          </button>
-          <button
-            onClick={() => setTimeFilter("month")}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
-              timeFilter === "month" ? "bg-red-650 text-white" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            This Month
-          </button>
-          <button
-            onClick={() => setTimeFilter("week")}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
-              timeFilter === "week" ? "bg-red-650 text-white" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            This Week
-          </button>
-        </div>
+        {/* Filter triggers for analytics tab */}
+        {activeTab === "analytics" && (
+          <div className="flex items-center bg-[#0b0b0b] border border-gray-800 p-1.5 rounded-xl self-start md:self-auto">
+            <button
+              onClick={() => setTimeFilter("all")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
+                timeFilter === "all" ? "bg-red-650 text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              All-Time
+            </button>
+            <button
+              onClick={() => setTimeFilter("month")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
+                timeFilter === "month" ? "bg-red-650 text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => setTimeFilter("week")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
+                timeFilter === "week" ? "bg-red-650 text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              This Week
+            </button>
+          </div>
+        )}
       </div>
 
-      {loading ? (
+      {/* SUB-TABS NAVIGATION */}
+      <div className="flex gap-2 mb-8 border-b border-white/5 pb-3">
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            activeTab === "analytics"
+              ? "bg-red-600/20 text-red-400 border border-red-500/30"
+              : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+          }`}
+        >
+          <BarChart3 size={16} />
+          <span>Analytics &amp; Charts</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("backups")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            activeTab === "backups"
+              ? "bg-red-600/20 text-red-400 border border-red-500/30"
+              : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+          }`}
+        >
+          <FileSpreadsheet size={16} />
+          <span>💾 Monthly CSV Backups &amp; Email Dispatcher</span>
+        </button>
+      </div>
+
+      {activeTab === "backups" ? (
+        <BackupConsole />
+      ) : loading ? (
         <div className="py-20 text-center text-gray-500">
           Compiling business datasets...
         </div>
