@@ -503,6 +503,7 @@ export async function POST(req: Request) {
         assignedEmployee: assignedEmployeeStr,
         discountAmount: discountAmountVal,
         finalAmount,
+        invoiceId: invoiceIdVal || `KK-${String(r).padStart(4, "0")}`,
         notes: rawNotesStr || null,
         createdBy: "GOOGLE SHEET SYNC",
       });
