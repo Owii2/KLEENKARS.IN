@@ -238,49 +238,40 @@ export async function GET() {
     const eventMap = new Map(events.map(e => [formatDateKolkata(e.date), e]));
     const weatherMap = new Map(weather.map(w => [formatDateKolkata(w.date), w]));
 
-    const agg: Record<string, { bookings: number; revenue: number }> = {};
+    const dayAgg: Record<string, { bookings: number; revenue: number }> = {};
 
     // 1. Process Bookings
     for (const b of bookings) {
-      const { dateStr, hour } = getDayAndHour(b.bookingDate, b.bookingTime, b.createdAt);
-      const bucket = timeBuckets.find(bucket => bucket.check(hour))?.name || "Unknown";
-      const key = `${dateStr}|${bucket}`;
-      if (!agg[key]) agg[key] = { bookings: 0, revenue: 0 };
-      agg[key].bookings += 1;
-      agg[key].revenue += b.totalCost ?? 0;
+      const { dateStr } = getDayAndHour(b.bookingDate, b.bookingTime, b.createdAt);
+      if (!dayAgg[dateStr]) dayAgg[dateStr] = { bookings: 0, revenue: 0 };
+      dayAgg[dateStr].bookings += 1;
+      dayAgg[dateStr].revenue += b.totalCost ?? 0;
     }
 
-    // 2. Process Transactions
+    // 2. Process Transactions (only add if not double counting or add transactions)
     for (const t of transactions) {
-      const { dateStr, hour } = getDayAndHour(t.date, t.time, t.createdAt);
-      const bucket = timeBuckets.find(bucket => bucket.check(hour))?.name || "Unknown";
-      const key = `${dateStr}|${bucket}`;
-      if (!agg[key]) agg[key] = { bookings: 0, revenue: 0 };
-      agg[key].bookings += 1;
-      agg[key].revenue += t.finalAmount ?? t.amount ?? 0;
+      const { dateStr } = getDayAndHour(t.date, t.time, t.createdAt);
+      if (!dayAgg[dateStr]) dayAgg[dateStr] = { bookings: 0, revenue: 0 };
+      dayAgg[dateStr].bookings += 1;
+      dayAgg[dateStr].revenue += t.finalAmount ?? t.amount ?? 0;
     }
 
-    // 3. Populate return data structure mapped to specific days of the current week
-    const data = [];
-    for (const day of orderedWeek) {
+    // 3. Populate return data structure (1 single consolidated row per day)
+    const data = orderedWeek.map((day) => {
       const rowDateStr = dateByDayName[day];
-      for (const bucket of timeBuckets) {
-        const key = `${day}|${bucket.name}`;
-        const stats = agg[key] || { bookings: 0, revenue: 0 };
-        const evt = eventMap.get(rowDateStr) || null;
-        const wthr = weatherMap.get(rowDateStr) || null;
-        data.push({
-          day,
-          date: rowDateStr,
-          timeOfDay: bucket.name,
-          bookings: stats.bookings,
-          revenue: stats.revenue,
-          avgRevenue: stats.bookings ? Math.round(stats.revenue / stats.bookings) : 0,
-          event: evt ? { type: evt.type, description: evt.description } : null,
-          weather: wthr ? { temperature: wthr.temperature, condition: wthr.condition } : null,
-        });
-      }
-    }
+      const stats = dayAgg[rowDateStr] || { bookings: 0, revenue: 0 };
+      const evt = eventMap.get(rowDateStr) || null;
+      const wthr = weatherMap.get(rowDateStr) || null;
+      return {
+        day,
+        date: rowDateStr,
+        bookings: stats.bookings,
+        revenue: stats.revenue,
+        avgRevenue: stats.bookings > 0 ? Math.round(stats.revenue / stats.bookings) : 0,
+        event: evt ? { type: evt.type, description: evt.description } : null,
+        weather: wthr ? { temperature: wthr.temperature, condition: wthr.condition } : null,
+      };
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (err) {

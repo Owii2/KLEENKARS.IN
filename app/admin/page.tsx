@@ -101,32 +101,40 @@ export default function AdminPage() {
   // ---------------------------------------------------------------------
   // KPI calculations – memoised for performance
   // ---------------------------------------------------------------------
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
   const currentMonthStr = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
   const totalRevenue = useMemo(() => {
-    const bookingRevenue = bookings.reduce((sum, b) => sum + b.totalCost, 0);
-    const transactionRevenue = transactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
+    const bookingRevenue = bookings
+      .filter((b) => b.status !== "Cancelled" && b.status !== "Rejected")
+      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
+    const transactionRevenue = transactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
     return bookingRevenue + transactionRevenue;
   }, [bookings, transactions]);
 
   const todayRevenue = useMemo(() => {
     const bookingRev = bookings
-      .filter((b) => b.bookingDate === todayStr)
-      .reduce((sum, b) => sum + b.totalCost, 0);
+      .filter((b) => b.bookingDate === todayStr && b.status !== "Cancelled" && b.status !== "Rejected")
+      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
     const transRev = transactions
       .filter((t) => t.date === todayStr)
-      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
+      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
     return bookingRev + transRev;
   }, [bookings, transactions, todayStr]);
 
   const monthlyRevTotal = useMemo(() => {
     const bookingRev = bookings
-      .filter((b) => b.bookingDate && b.bookingDate.startsWith(currentMonthStr))
-      .reduce((sum, b) => sum + b.totalCost, 0);
+      .filter((b) => b.bookingDate && b.bookingDate.startsWith(currentMonthStr) && b.status !== "Cancelled" && b.status !== "Rejected")
+      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
     const transRev = transactions
       .filter((t) => t.date && t.date.startsWith(currentMonthStr))
-      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
+      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
     return bookingRev + transRev;
   }, [bookings, transactions, currentMonthStr]);
 
