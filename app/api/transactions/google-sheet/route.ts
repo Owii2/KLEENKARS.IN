@@ -120,11 +120,14 @@ function normalizeDate(rawDate: string): string {
   return new Date().toISOString().split("T")[0];
 }
 
-// Helper to convert any value to UPPERCASE string safely
+// Helper to convert any value to UPPERCASE string safely, keeping blank/empty as null
 function toUpperStr(val: any): string | null {
   if (val === undefined || val === null) return null;
   const s = String(val).trim();
-  return s.length > 0 ? s.toUpperCase() : null;
+  if (s.length === 0 || s === "." || s === "-" || s === "--" || s.toLowerCase() === "n/a" || s.toLowerCase() === "na" || s.toLowerCase() === "null" || s.toLowerCase() === "none") {
+    return null;
+  }
+  return s.toUpperCase();
 }
 
 // Intelligent Header Mapping with fallback to user-specified column letters/indexes
@@ -472,7 +475,7 @@ export async function POST(req: Request) {
         assignedEmployee: assignedEmployeeStr,
         discountAmount: discountAmountVal,
         finalAmount,
-        notes: rawNotesStr ? `[GOOGLE SHEETS AUTO-SYNC] ${rawNotesStr}` : "[GOOGLE SHEETS AUTO-SYNC]",
+        notes: rawNotesStr || null,
         createdBy: "GOOGLE SHEET SYNC",
       });
 
