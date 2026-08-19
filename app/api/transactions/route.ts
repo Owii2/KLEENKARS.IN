@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { requireRoles } from "@/lib/apiAuth";
 import { matchServiceWithPrice } from "@/lib/serviceMatcher";
+import { pushTransactionToGoogleSheet } from "@/lib/googleSheetSync";
 
 export async function GET(req: Request) {
   const auth = await requireRoles(["admin", "manager"]);
@@ -151,26 +152,40 @@ export async function POST(req: Request) {
       }
     }
 
+    const upperPaymentMode = (paymentMode || "CASH").trim().toUpperCase();
+    const upperCustomerName = customerName ? String(customerName).trim().toUpperCase() : null;
+    const upperVehicleNumber = vehicleNumber ? String(vehicleNumber).trim().toUpperCase() : null;
+    const upperVehicleType = resolvedVehicleType ? String(resolvedVehicleType).trim().toUpperCase() : null;
+    const upperServiceOpted = resolvedServiceOpted ? String(resolvedServiceOpted).trim().toUpperCase() : null;
+    const upperAddonServices = addonServices ? String(addonServices).trim().toUpperCase() : null;
+    const upperAssignedEmployee = assignedEmployee ? String(assignedEmployee).trim().toUpperCase() : null;
+    const upperNotes = notes ? String(notes).trim().toUpperCase() : null;
+
     const transaction = await prisma.transaction.create({
       data: {
         date,
         amount: parsedAmount,
-        paymentMode,
+        paymentMode: upperPaymentMode,
         time: time || null,
-        customerName: customerName || null,
+        customerName: upperCustomerName,
         customerMobile: customerMobile || null,
         customerId: customerId || null,
-        vehicleNumber: vehicleNumber || null,
-        vehicleType: resolvedVehicleType || null,
-        serviceOpted: resolvedServiceOpted || null,
-        addonServices: addonServices || null,
-        assignedEmployee: assignedEmployee || null,
+        vehicleNumber: upperVehicleNumber,
+        vehicleType: upperVehicleType,
+        serviceOpted: upperServiceOpted,
+        addonServices: upperAddonServices,
+        assignedEmployee: upperAssignedEmployee,
         discountAmount: parsedDiscount,
         finalAmount,
-        notes: notes || null,
+        notes: upperNotes,
         createdBy: auth.user?.name || "System",
       },
     });
+
+    // Automatically push newly created manual transaction to Google Sheet in real-time
+    pushTransactionToGoogleSheet(transaction).catch((err) =>
+      console.error("Google Sheet auto-push error:", err)
+    );
 
     return NextResponse.json({
       success: true,

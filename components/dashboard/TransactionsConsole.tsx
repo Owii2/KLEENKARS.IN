@@ -99,8 +99,10 @@ export default function TransactionsConsole() {
   const [googleSheetUrl, setGoogleSheetUrl] = useState("");
   const [googleSheetName, setGoogleSheetName] = useState("");
   const [googleSheetAutoSync, setGoogleSheetAutoSync] = useState(false);
+  const [googleSheetWebhookUrl, setGoogleSheetWebhookUrl] = useState("");
   const [googleSheetSyncing, setGoogleSheetSyncing] = useState(false);
   const [googleSheetSaving, setGoogleSheetSaving] = useState(false);
+  const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
   const [googleSheetLastSync, setGoogleSheetLastSync] = useState<any>(null);
   const [googleSheetFeedback, setGoogleSheetFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [googleSheetCustomCols, setGoogleSheetCustomCols] = useState<{
@@ -116,6 +118,7 @@ export default function TransactionsConsole() {
     notes?: string;
   }>({});
   const [showAdvancedMapping, setShowAdvancedMapping] = useState(false);
+  const [showAppsScriptGuide, setShowAppsScriptGuide] = useState(false);
   
   // Data lists
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -293,6 +296,7 @@ export default function TransactionsConsole() {
         setGoogleSheetUrl(data.sheetUrl || "");
         setGoogleSheetName(data.sheetName || "");
         setGoogleSheetAutoSync(data.autoSync || false);
+        setGoogleSheetWebhookUrl(data.webhookUrl || "");
         setGoogleSheetCustomCols(data.customColumns || {});
         setGoogleSheetLastSync(data.lastSync || null);
 
@@ -317,12 +321,13 @@ export default function TransactionsConsole() {
           sheetUrl: googleSheetUrl,
           sheetName: googleSheetName,
           autoSync: googleSheetAutoSync,
+          webhookUrl: googleSheetWebhookUrl,
           customColumns: googleSheetCustomCols,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setGoogleSheetFeedback({ type: "success", message: "Google Sheet settings saved successfully!" });
+        setGoogleSheetFeedback({ type: "success", message: "Google Sheet 2-way settings saved successfully!" });
       } else {
         setGoogleSheetFeedback({ type: "error", message: data.message || "Failed to save settings." });
       }
@@ -330,6 +335,43 @@ export default function TransactionsConsole() {
       setGoogleSheetFeedback({ type: "error", message: "Failed to connect to server." });
     } finally {
       setGoogleSheetSaving(false);
+    }
+  };
+
+  const handleCleanupDuplicates = async (keepOnlyGoogleSheet = false) => {
+    if (!confirm(keepOnlyGoogleSheet ? "Are you sure you want to delete all non-Google Sheet records and keep ONLY Google Sheet transactions?" : "Are you sure you want to clean up duplicate transaction records? Only unique entries will be kept.")) {
+      return;
+    }
+
+    setCleaningDuplicates(true);
+    setGoogleSheetFeedback(null);
+
+    try {
+      const res = await fetch("/api/transactions/cleanup-duplicates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keepOnlyGoogleSheet }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGoogleSheetFeedback({
+          type: "success",
+          message: data.message || `Cleaned up ${data.deletedCount} duplicate records! Remaining: ${data.remainingCount}`,
+        });
+        fetchTransactions();
+      } else {
+        setGoogleSheetFeedback({
+          type: "error",
+          message: data.message || "Failed to cleanup duplicates.",
+        });
+      }
+    } catch (err: any) {
+      setGoogleSheetFeedback({
+        type: "error",
+        message: "Error cleaning duplicates: " + (err.message || "Unknown error"),
+      });
+    } finally {
+      setCleaningDuplicates(false);
     }
   };
 
@@ -1654,6 +1696,61 @@ export default function TransactionsConsole() {
                   </label>
                 </div>
 
+                <div className="pt-4 border-t border-white/5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
+                      <Zap size={14} className="text-yellow-400" /> 2-Way Sync: Auto-Push Manual Entries to Google Sheet
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAppsScriptGuide(!showAppsScriptGuide)}
+                      className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
+                    >
+                      {showAppsScriptGuide ? "Hide Setup Guide" : "Setup Google Apps Script Webhook"}
+                    </button>
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://script.google.com/macros/s/AKfycbx.../exec"
+                    value={googleSheetWebhookUrl}
+                    onChange={(e) => setGoogleSheetWebhookUrl(e.target.value)}
+                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition font-mono"
+                  />
+                  <p className="text-[10px] text-gray-500">
+                    When configured, any transaction entered manually via Quick Entry, Staff panel, or Admin is instantly appended to your Google Sheet!
+                  </p>
+
+                  {showAppsScriptGuide && (
+                    <div className="p-4 bg-black/60 rounded-2xl border border-white/10 space-y-2.5 text-xs text-gray-300 animate-in fade-in duration-150">
+                      <div className="font-bold text-white flex items-center gap-2">
+                        <span>⚡ 30-Second Google Apps Script Setup (for auto-push to Google Sheet):</span>
+                      </div>
+                      <ol className="list-decimal list-inside space-y-1 text-gray-400">
+                        <li>In your Google Sheet, click <strong>Extensions ➔ Apps Script</strong>.</li>
+                        <li>Delete existing code, paste the code snippet below, and click <strong>Save</strong>.</li>
+                        <li>Click <strong>Deploy ➔ New Deployment ➔ Web App</strong>.</li>
+                        <li>Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>, then click <strong>Deploy</strong>.</li>
+                        <li>Copy the Web App URL and paste it into the input box above!</li>
+                      </ol>
+                      <pre className="p-3 bg-[#0a0a0f] rounded-xl border border-white/5 text-[10px] text-emerald-300 overflow-x-auto font-mono">
+{`function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = data.sheetName ? ss.getSheetByName(data.sheetName) : ss.getActiveSheet();
+  if (!sheet) sheet = ss.getActiveSheet();
+  var r = data.row;
+  sheet.appendRow([
+    r.date, r.time, r.amount, r.paymentMode, r.customerName,
+    r.customerMobile, r.vehicleNumber, r.vehicleType, r.serviceOpted,
+    r.addonServices, r.assignedEmployee, r.discountAmount, r.notes
+  ]);
+  return ContentService.createTextOutput(JSON.stringify({result: "success"})).setMimeType(ContentService.MimeType.JSON);
+}`}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-white/5">
                   <button
                     onClick={handleSaveGoogleSheetConfig}
@@ -1675,10 +1772,10 @@ export default function TransactionsConsole() {
                 </div>
               </div>
 
-              {/* SYNC STATUS METRICS CARD */}
+              {/* SYNC STATUS & CLEANUP ACTIONS CARD */}
               <div className="space-y-4 bg-[#12121a]/80 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
                 <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">Sync Health &amp; History</h3>
+                  <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">Sync Health &amp; Cleanup</h3>
                   
                   {googleSheetLastSync ? (
                     <div className="space-y-3 text-xs">
@@ -1714,6 +1811,28 @@ export default function TransactionsConsole() {
                       No sync history recorded yet. Add your Google Sheet URL and click &quot;Sync &amp; Auto-Fetch Now&quot;.
                     </div>
                   )}
+
+                  {/* DUPLICATE CLEANUP ACTION BUTTONS */}
+                  <div className="pt-3 border-t border-white/5 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCleanupDuplicates(false)}
+                      disabled={cleaningDuplicates}
+                      className="w-full py-2.5 px-3 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {cleaningDuplicates ? <RefreshCw className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                      {cleaningDuplicates ? "Cleaning Duplicates..." : "🧹 Remove Duplicate Records (Keep Single Clean)"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCleanupDuplicates(true)}
+                      disabled={cleaningDuplicates}
+                      className="w-full py-2 px-3 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 rounded-xl text-[11px] font-semibold transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 size={12} /> Keep ONLY Google Sheet Transactions
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-[11px] text-emerald-300/80 leading-relaxed">

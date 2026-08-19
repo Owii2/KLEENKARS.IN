@@ -157,11 +157,12 @@ export async function GET() {
   }
 
   try {
-    const [urlSetting, sheetNameSetting, autoSyncSetting, customColsSetting, lastSyncSetting] = await Promise.all([
+    const [urlSetting, sheetNameSetting, autoSyncSetting, customColsSetting, webhookSetting, lastSyncSetting] = await Promise.all([
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_transactions_url" } }),
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_transactions_sheet_name" } }),
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_auto_sync_enabled" } }),
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_transactions_custom_columns" } }),
+      prisma.systemSetting.findUnique({ where: { key: "google_sheet_webhook_url" } }),
       prisma.systemSetting.findUnique({ where: { key: "google_sheet_last_sync_info" } }),
     ]);
 
@@ -188,6 +189,7 @@ export async function GET() {
       sheetUrl: urlSetting?.value || "",
       sheetName: sheetNameSetting?.value || "",
       autoSync: autoSyncSetting?.value === "true",
+      webhookUrl: webhookSetting?.value || "",
       customColumns,
       lastSync: lastSyncInfo,
     });
@@ -207,7 +209,7 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
-    const { sheetUrl, sheetName, autoSync, customColumns } = body;
+    const { sheetUrl, sheetName, autoSync, webhookUrl, customColumns } = body;
 
     if (sheetUrl !== undefined) {
       await prisma.systemSetting.upsert({
@@ -230,6 +232,14 @@ export async function PUT(req: Request) {
         where: { key: "google_sheet_auto_sync_enabled" },
         update: { value: String(autoSync) },
         create: { key: "google_sheet_auto_sync_enabled", value: String(autoSync) },
+      });
+    }
+
+    if (webhookUrl !== undefined) {
+      await prisma.systemSetting.upsert({
+        where: { key: "google_sheet_webhook_url" },
+        update: { value: String(webhookUrl).trim() },
+        create: { key: "google_sheet_webhook_url", value: String(webhookUrl).trim() },
       });
     }
 
