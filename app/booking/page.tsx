@@ -421,9 +421,11 @@ export default function BookingPage() {
         pickupAddress: pickupAddress.trim(),
       });
 
-      window.localStorage.setItem("bookings", JSON.stringify(localBookings));
+      if (data.whatsAppUrl) {
+        window.open(data.whatsAppUrl, "_blank", "noopener,noreferrer");
+      }
 
-      alert("Booking Submitted Successfully");
+      alert(`🎉 Booking Submitted Successfully! (Ref: #${data.booking?.id || 'New'})\n\nAn Email Alert has been dispatched to our team, and WhatsApp has opened to notify the owner directly!`);
 
       setCustomerName("");
       setPhoneNumber("");

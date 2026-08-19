@@ -10,6 +10,7 @@ import {
   type PricingOffer,
   type PricingService,
 } from "@/lib/bookingPricing";
+import { buildWhatsAppUrl, sendEmailNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
 interface BookingRequestDetail {
@@ -245,10 +246,33 @@ export async function POST(req: Request) {
       }
     }
 
+    const notificationParams = {
+      bookingId: booking.id,
+      customerName,
+      phoneNumber,
+      vehicleType: storedDetails.map(d => d.vehicleType).join(", "),
+      serviceType: services.find(s => s.id === primaryServiceId)?.name || "Wash Service",
+      addons: storedDetails.flatMap(d => (d.addons || []).map(aId => services.find(s => s.id === aId)?.name).filter(Boolean) as string[]),
+      pickupDrop: Boolean(body.pickupDrop),
+      pickupAddress: body.pickupAddress,
+      bookingDate: body.bookingDate,
+      bookingTime: body.bookingTime,
+      totalCost: pricing.total,
+      paymentMode: body.paymentMode || "Cash",
+      notes: body.notes,
+    };
+
+    // Trigger email alert asynchronously to admin/owner
+    sendEmailNotification(notificationParams).catch((err) => console.error("Email alert error:", err));
+
+    // Build WhatsApp URL pre-filled for owner
+    const whatsAppUrl = buildWhatsAppUrl(notificationParams);
+
     return NextResponse.json({
       success: true,
       booking,
       pricing,
+      whatsAppUrl,
     });
   } catch (error) {
     console.log(error);
