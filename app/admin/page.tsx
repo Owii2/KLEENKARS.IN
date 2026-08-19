@@ -132,21 +132,21 @@ export default function AdminPage() {
 
   const cashRevenue = useMemo(() => {
     const bookingRev = bookings
-      .filter((b) => b.paymentMode === "Cash")
-      .reduce((sum, b) => sum + b.totalCost, 0);
+      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "CASH")
+      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
     const transRev = transactions
-      .filter((t) => t.paymentMode === "Cash")
-      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
+      .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "CASH")
+      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
     return bookingRev + transRev;
   }, [bookings, transactions]);
 
   const upiRevenue = useMemo(() => {
     const bookingRev = bookings
-      .filter((b) => b.paymentMode === "UPI")
-      .reduce((sum, b) => sum + b.totalCost, 0);
+      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "UPI")
+      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
     const transRev = transactions
-      .filter((t) => t.paymentMode === "UPI")
-      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
+      .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "UPI")
+      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
     return bookingRev + transRev;
   }, [bookings, transactions]);
 

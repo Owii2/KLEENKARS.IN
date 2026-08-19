@@ -725,18 +725,18 @@ export default function ManagerPage() {
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
 
     const cashRevenue = bookings
-      .filter((b) => b.paymentMode === "Cash")
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost), 0) + 
+      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "CASH")
+      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0) + 
       transactions
-      .filter((t) => t.paymentMode === "Cash")
-      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
+      .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "CASH")
+      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
 
     const upiRevenue = bookings
-      .filter((b) => b.paymentMode === "UPI")
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost), 0) + 
+      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "UPI")
+      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0) + 
       transactions
-      .filter((t) => t.paymentMode === "UPI")
-      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount), 0);
+      .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "UPI")
+      .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
 
     // Top values
     const serviceCounts: Record<string, number> = {};

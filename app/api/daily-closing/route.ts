@@ -113,21 +113,21 @@ export async function POST(req: Request) {
     );
 
     const bookingCash = bookings
-      .filter((booking) => booking.paymentMode === "Cash")
+      .filter((booking) => booking.paymentMode && booking.paymentMode.toUpperCase() === "CASH")
       .reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
 
     const transactionCash = transactions
-      .filter((tx) => tx.paymentMode === "Cash")
+      .filter((tx) => tx.paymentMode && tx.paymentMode.toUpperCase() === "CASH")
       .reduce((sum, tx) => sum + (tx.finalAmount ?? tx.amount ?? 0), 0);
 
     const cashRevenue = bookingCash + transactionCash;
 
     const bookingUpi = bookings
-      .filter((booking) => booking.paymentMode === "UPI")
+      .filter((booking) => booking.paymentMode && booking.paymentMode.toUpperCase() === "UPI")
       .reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
 
     const transactionUpi = transactions
-      .filter((tx) => tx.paymentMode === "UPI")
+      .filter((tx) => tx.paymentMode && tx.paymentMode.toUpperCase() === "UPI")
       .reduce((sum, tx) => sum + (tx.finalAmount ?? tx.amount ?? 0), 0);
 
     const upiRevenue = bookingUpi + transactionUpi;
