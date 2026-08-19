@@ -22,7 +22,10 @@ import {
   Clock,
   Tag,
   Car,
-  FileText
+  FileText,
+  FileSpreadsheet,
+  Link2,
+  Zap
 } from "lucide-react";
 
 interface Transaction {
@@ -90,7 +93,15 @@ const DEFAULT_DETECTION_RULES = [
 ];
 
 export default function TransactionsConsole() {
-  const [activeSubTab, setActiveSubTab] = useState<"list" | "quick-entry" | "import">("list");
+  const [activeSubTab, setActiveSubTab] = useState<"list" | "quick-entry" | "import" | "google-sheet">("list");
+  
+  // Google Sheet Auto-Sync States
+  const [googleSheetUrl, setGoogleSheetUrl] = useState("");
+  const [googleSheetAutoSync, setGoogleSheetAutoSync] = useState(false);
+  const [googleSheetSyncing, setGoogleSheetSyncing] = useState(false);
+  const [googleSheetSaving, setGoogleSheetSaving] = useState(false);
+  const [googleSheetLastSync, setGoogleSheetLastSync] = useState<any>(null);
+  const [googleSheetFeedback, setGoogleSheetFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   
   // Data lists
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -260,9 +271,94 @@ export default function TransactionsConsole() {
     }
   };
 
+  const fetchGoogleSheetConfig = async () => {
+    try {
+      const res = await fetch("/api/transactions/google-sheet");
+      const data = await res.json();
+      if (data.success) {
+        setGoogleSheetUrl(data.sheetUrl || "");
+        setGoogleSheetAutoSync(data.autoSync || false);
+        setGoogleSheetLastSync(data.lastSync || null);
+
+        // If auto-sync is enabled and sheetUrl is present, trigger automatic background sync
+        if (data.autoSync && data.sheetUrl) {
+          triggerGoogleSheetSync(data.sheetUrl, true);
+        }
+      }
+    } catch (err) {
+      console.error("Error loading Google Sheet config:", err);
+    }
+  };
+
+  const handleSaveGoogleSheetConfig = async () => {
+    try {
+      setGoogleSheetSaving(true);
+      setGoogleSheetFeedback(null);
+      const res = await fetch("/api/transactions/google-sheet", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sheetUrl: googleSheetUrl,
+          autoSync: googleSheetAutoSync,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGoogleSheetFeedback({ type: "success", message: "Google Sheet settings saved successfully!" });
+      } else {
+        setGoogleSheetFeedback({ type: "error", message: data.message || "Failed to save settings." });
+      }
+    } catch (err) {
+      setGoogleSheetFeedback({ type: "error", message: "Failed to connect to server." });
+    } finally {
+      setGoogleSheetSaving(false);
+    }
+  };
+
+  const triggerGoogleSheetSync = async (urlToUse?: string, isBackground = false) => {
+    const url = urlToUse || googleSheetUrl;
+    if (!url.trim()) {
+      setGoogleSheetFeedback({ type: "error", message: "Please provide a Google Sheet URL first." });
+      return;
+    }
+
+    setGoogleSheetSyncing(true);
+    if (!isBackground) setGoogleSheetFeedback(null);
+
+    try {
+      const res = await fetch("/api/transactions/google-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetUrl: url }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGoogleSheetFeedback({
+          type: "success",
+          message: data.message || `Sync Complete! ${data.addedCount} new transactions added, ${data.skippedCount} duplicates skipped.`,
+        });
+        setGoogleSheetLastSync(data.syncInfo);
+        fetchTransactions();
+      } else {
+        setGoogleSheetFeedback({
+          type: "error",
+          message: data.message || "Failed to sync transactions from Google Sheet.",
+        });
+      }
+    } catch (err: any) {
+      setGoogleSheetFeedback({
+        type: "error",
+        message: "Error fetching data from Google Sheet: " + (err.message || "Unknown error"),
+      });
+    } finally {
+      setGoogleSheetSyncing(false);
+    }
+  };
+
   useEffect(() => {
     fetchTransactions();
     fetchMetadata();
+    fetchGoogleSheetConfig();
   }, [filterStartDate, filterEndDate, filterCustomer, filterVehicle, filterEmployee, filterPaymentMode]);
 
   // Handle Quick Entry Submit
@@ -734,6 +830,19 @@ export default function TransactionsConsole() {
             }`}
           >
             <Upload size={16} /> Import Wizard
+          </button>
+          <button
+            onClick={() => setActiveSubTab("google-sheet")}
+            className={`px-5 py-2.5 rounded-2xl font-semibold transition text-sm flex items-center gap-2 ${
+              activeSubTab === "google-sheet"
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/30"
+                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <FileSpreadsheet size={16} /> Google Sheet Auto-Sync
+            {googleSheetLastSync && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            )}
           </button>
         </div>
       </div>
@@ -1329,6 +1438,169 @@ export default function TransactionsConsole() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* SUB TAB: GOOGLE SHEET AUTO-SYNC */}
+      {activeSubTab === "google-sheet" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-[#0a0a0f]/60 p-6 md:p-8 rounded-3xl border border-white/5 backdrop-blur-xl space-y-6">
+            <div>
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-widest">
+                <FileSpreadsheet size={16} /> Live Cloud Integration
+              </div>
+              <h2 className="text-2xl font-bold mt-1 text-white">Google Sheet Auto-Fetch &amp; Synchronization</h2>
+              <p className="text-gray-400 text-sm mt-1">
+                Connect your team&apos;s Google Sheet to automatically import new transaction records, deduplicate existing entries, and keep CRM analytics updated with zero manual work.
+              </p>
+            </div>
+
+            {googleSheetFeedback && (
+              <div
+                className={`p-4 rounded-2xl border flex items-center gap-3 text-sm ${
+                  googleSheetFeedback.type === "success"
+                    ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"
+                    : "bg-red-950/40 border-red-500/30 text-red-300"
+                }`}
+              >
+                {googleSheetFeedback.type === "success" ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+                <span>{googleSheetFeedback.message}</span>
+              </div>
+            )}
+
+            {/* CONFIGURATION FORM */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-5 bg-[#12121a]/80 p-6 rounded-2xl border border-white/5">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-300 flex items-center justify-between">
+                    <span className="flex items-center gap-2"><Link2 size={14} className="text-emerald-400" /> Google Sheet Public / Shareable URL</span>
+                    <span className="text-[10px] text-gray-500 font-mono">Any valid Google Sheet link</span>
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit"
+                    value={googleSheetUrl}
+                    onChange={(e) => setGoogleSheetUrl(e.target.value)}
+                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition font-mono"
+                  />
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    Tip: In Google Sheets, click <strong>Share</strong> ➔ Select <strong>&quot;Anyone with the link can view&quot;</strong>, then copy and paste the link here.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={googleSheetAutoSync}
+                      onChange={(e) => setGoogleSheetAutoSync(e.target.checked)}
+                      className="accent-emerald-500 w-5 h-5 rounded"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-white">Auto-Fetch on Console Visit</span>
+                      <span className="text-[11px] text-gray-400">Automatically syncs and imports newly added rows whenever you open the Transactions page</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-white/5">
+                  <button
+                    onClick={handleSaveGoogleSheetConfig}
+                    disabled={googleSheetSaving}
+                    className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-xs transition flex items-center gap-2 cursor-pointer"
+                  >
+                    {googleSheetSaving ? <RefreshCw className="animate-spin" size={14} /> : <FileText size={14} />}
+                    Save Configuration
+                  </button>
+
+                  <button
+                    onClick={() => triggerGoogleSheetSync()}
+                    disabled={googleSheetSyncing || !googleSheetUrl.trim()}
+                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-emerald-900/30 cursor-pointer"
+                  >
+                    {googleSheetSyncing ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
+                    {googleSheetSyncing ? "Fetching Data from Sheet..." : "Sync & Auto-Fetch Now"}
+                  </button>
+                </div>
+              </div>
+
+              {/* SYNC STATUS METRICS CARD */}
+              <div className="space-y-4 bg-[#12121a]/80 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">Sync Health &amp; History</h3>
+                  
+                  {googleSheetLastSync ? (
+                    <div className="space-y-3 text-xs">
+                      <div className="flex justify-between py-1.5 border-b border-white/5">
+                        <span className="text-gray-400">Last Synced:</span>
+                        <span className="text-white font-medium">
+                          {new Date(googleSheetLastSync.timestamp).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-white/5">
+                        <span className="text-gray-400">Rows in Sheet:</span>
+                        <span className="text-white font-medium">{googleSheetLastSync.totalRowsInSheet || 0}</span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-white/5">
+                        <span className="text-emerald-400">New Added:</span>
+                        <span className="text-emerald-400 font-bold">+{googleSheetLastSync.addedCount || 0}</span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-white/5">
+                        <span className="text-gray-400">Duplicates Skipped:</span>
+                        <span className="text-gray-300 font-medium">{googleSheetLastSync.skippedCount || 0}</span>
+                      </div>
+                      <div className="flex justify-between py-1.5">
+                        <span className="text-gray-400">Deduplication:</span>
+                        <span className="text-emerald-400 font-semibold">Active &amp; Protected</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center text-xs text-gray-400">
+                      No sync history recorded yet. Add your Google Sheet URL and click &quot;Sync &amp; Auto-Fetch Now&quot;.
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-[11px] text-emerald-300/80 leading-relaxed">
+                  ✓ Duplicate Prevention: Records with matching dates, amounts, and vehicle numbers are automatically skipped to keep financials clean.
+                </div>
+              </div>
+            </div>
+
+            {/* EXPECTED COLUMNS GUIDE */}
+            <div className="bg-[#12121a]/40 p-6 rounded-2xl border border-white/5 space-y-3">
+              <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Supported Google Sheet Columns</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                The auto-fetch engine intelligently recognizes flexible column headers in your Google Sheet:
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs">
+                <div className="p-2.5 bg-black/40 rounded-xl border border-white/5">
+                  <div className="font-bold text-white">Date *</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">e.g. 2026-08-20, 20/08/2026</div>
+                </div>
+                <div className="p-2.5 bg-black/40 rounded-xl border border-white/5">
+                  <div className="font-bold text-white">Amount *</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">e.g. 299, 499, 1499</div>
+                </div>
+                <div className="p-2.5 bg-black/40 rounded-xl border border-white/5">
+                  <div className="font-bold text-white">Payment Mode</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">e.g. Cash, UPI, Card</div>
+                </div>
+                <div className="p-2.5 bg-black/40 rounded-xl border border-white/5">
+                  <div className="font-bold text-white">Customer Name</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">e.g. Rahul Sharma</div>
+                </div>
+                <div className="p-2.5 bg-black/40 rounded-xl border border-white/5">
+                  <div className="font-bold text-white">Vehicle Number</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">e.g. UP81 AB 1234</div>
+                </div>
+                <div className="p-2.5 bg-black/40 rounded-xl border border-white/5">
+                  <div className="font-bold text-white">Service / Wash</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">Auto-detected if blank</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
