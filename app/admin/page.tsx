@@ -111,61 +111,35 @@ export default function AdminPage() {
   const currentMonthStr = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
   const totalRevenue = useMemo(() => {
-    const bookingRevenue = bookings
-      .filter((b) => b.status !== "Cancelled" && b.status !== "Rejected")
-      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
-    const transactionRevenue = transactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-    return bookingRevenue + transactionRevenue;
-  }, [bookings, transactions]);
+    return transactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
+  }, [transactions]);
 
   const todayRevenue = useMemo(() => {
-    const bookingRev = bookings
-      .filter((b) => b.bookingDate === todayStr && b.status !== "Cancelled" && b.status !== "Rejected")
-      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
-    const transRev = transactions
+    return transactions
       .filter((t) => t.date === todayStr)
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-    return bookingRev + transRev;
-  }, [bookings, transactions, todayStr]);
+  }, [transactions, todayStr]);
 
   const monthlyRevTotal = useMemo(() => {
-    const bookingRev = bookings
-      .filter((b) => b.bookingDate && b.bookingDate.startsWith(currentMonthStr) && b.status !== "Cancelled" && b.status !== "Rejected")
-      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
-    const transRev = transactions
+    return transactions
       .filter((t) => t.date && t.date.startsWith(currentMonthStr))
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-    return bookingRev + transRev;
-  }, [bookings, transactions, currentMonthStr]);
+  }, [transactions, currentMonthStr]);
 
   const cashRevenue = useMemo(() => {
-    const bookingRev = bookings
-      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "CASH")
-      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
-    const transRev = transactions
+    return transactions
       .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "CASH")
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-    return bookingRev + transRev;
-  }, [bookings, transactions]);
+  }, [transactions]);
 
   const upiRevenue = useMemo(() => {
-    const bookingRev = bookings
-      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "UPI")
-      .reduce((sum, b) => sum + (b.totalCost || 0), 0);
-    const transRev = transactions
+    return transactions
       .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "UPI")
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-    return bookingRev + transRev;
-  }, [bookings, transactions]);
+  }, [transactions]);
 
   const topService = useMemo(() => {
     const counts: Record<string, number> = {};
-    bookings.forEach(b => {
-      if (b.serviceType && !b.serviceType.toLowerCase().includes("addon") && !b.serviceType.toLowerCase().includes("polish")) {
-        const baseName = getBaseServiceName(b.serviceType);
-        counts[baseName] = (counts[baseName] || 0) + 1;
-      }
-    });
     transactions.forEach(t => {
       if (t.serviceOpted && !t.serviceOpted.toLowerCase().includes("addon") && !t.serviceOpted.toLowerCase().includes("polish")) {
         const baseName = getBaseServiceName(t.serviceOpted);
@@ -181,13 +155,10 @@ export default function AdminPage() {
       }
     });
     return top;
-  }, [bookings, transactions]);
+  }, [transactions]);
 
   const topCustomer = useMemo(() => {
     const counts: Record<string, number> = {};
-    bookings.forEach(b => {
-      if (b.customerName) counts[b.customerName] = (counts[b.customerName] || 0) + 1;
-    });
     transactions.forEach(t => {
       if (t.customerName) counts[t.customerName] = (counts[t.customerName] || 0) + 1;
     });
@@ -200,13 +171,10 @@ export default function AdminPage() {
       }
     });
     return top;
-  }, [bookings, transactions]);
+  }, [transactions]);
 
   const topEmployee = useMemo(() => {
     const counts: Record<string, number> = {};
-    bookings.forEach(b => {
-      if (b.assignedEmployeeName) counts[b.assignedEmployeeName] = (counts[b.assignedEmployeeName] || 0) + 1;
-    });
     transactions.forEach(t => {
       if (t.assignedEmployee) counts[t.assignedEmployee] = (counts[t.assignedEmployee] || 0) + 1;
     });
@@ -219,10 +187,9 @@ export default function AdminPage() {
       }
     });
     return top;
-  }, [bookings, transactions]);
+  }, [transactions]);
 
-  const totalCount = bookings.length + transactions.length;
-const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
+  const averageTicket = transactions.length ? Math.round(totalRevenue / transactions.length) : 0;
   const pendingBookings = bookings.filter((b) => b.status === "Pending").length;
   const inProgress = bookings.filter((b) => ["Assigned", "Washing"].includes(b.status)).length;
   const completedJobs = bookings.filter((b) => ["Completed", "Delivered"].includes(b.status)).length;
@@ -234,12 +201,6 @@ const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
   // Service‑wise revenue map
   const serviceRevenue = useMemo(() => {
     const stats: Record<string, number> = {};
-    bookings.forEach(b => {
-      if (b.serviceType) {
-        const baseName = getBaseServiceName(b.serviceType);
-        stats[baseName] = (stats[baseName] || 0) + b.totalCost;
-      }
-    });
     transactions.forEach(t => {
       if (t.serviceOpted) {
         const baseName = getBaseServiceName(t.serviceOpted);
@@ -247,7 +208,7 @@ const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
       }
     });
     return stats;
-  }, [bookings, transactions]);
+  }, [transactions]);
 
   // Monthly revenue – grouped by month name
   const monthlyRevenue = useMemo(() => {
@@ -270,16 +231,12 @@ const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
       }
     };
 
-    bookings.forEach(b => {
-      addRevenue(b.bookingDate, b.totalCost, b.createdAt);
-    });
-
     transactions.forEach(t => {
       addRevenue(t.date, t.finalAmount ?? t.amount, t.createdAt);
     });
 
     return stats;
-  }, [bookings, transactions]);
+  }, [transactions]);
 
   // ---------------------------------------------------------------------
   // SVG chart helpers – remain unchanged but wrapped for clarity
@@ -489,17 +446,17 @@ const averageTicket = totalCount ? Math.round(totalRevenue / totalCount) : 0;
 
           {/* KPI Grid */}
           <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
-            <KpiCard label="Today's Revenue" value={`Rs. ${todayRevenue}`} color="text-red-400" />
-            <KpiCard label="Monthly Revenue" value={`Rs. ${monthlyRevTotal}`} color="text-yellow-400" />
-            <KpiCard label="Cash Revenue" value={`Rs. ${cashRevenue}`} color="text-emerald-400" />
-            <KpiCard label="UPI Revenue" value={`Rs. ${upiRevenue}`} color="text-cyan-400" />
-            <KpiCard label="Total Revenue" value={`Rs. ${totalRevenue}`} color="text-green-400" />
-            <KpiCard label="Total Bookings" value={bookings.length} color="text-blue-400" />
+            <KpiCard label="Today's Revenue" value={`₹${todayRevenue.toLocaleString("en-IN")}`} color="text-red-400" />
+            <KpiCard label="Monthly Revenue" value={`₹${monthlyRevTotal.toLocaleString("en-IN")}`} color="text-yellow-400" />
+            <KpiCard label="Cash Revenue" value={`₹${cashRevenue.toLocaleString("en-IN")}`} color="text-emerald-400" />
+            <KpiCard label="UPI Revenue" value={`₹${upiRevenue.toLocaleString("en-IN")}`} color="text-cyan-400" />
+            <KpiCard label="Total Revenue" value={`₹${totalRevenue.toLocaleString("en-IN")}`} color="text-green-400" />
             <KpiCard label="Total Transactions" value={transactions.length} color="text-purple-400" />
+            <KpiCard label="Online Bookings" value={bookings.length} color="text-blue-400" />
             <KpiCard label="Top Service" value={topService} color="text-indigo-400" />
             <KpiCard label="Top Customer" value={topCustomer} color="text-pink-400" />
             <KpiCard label="Top Employee" value={topEmployee} color="text-orange-400" />
-            <KpiCard label="Avg Ticket Size" value={`Rs. ${averageTicket}`} color="text-yellow-400" />
+            <KpiCard label="Avg Ticket Size" value={`₹${averageTicket.toLocaleString("en-IN")}`} color="text-yellow-400" />
             <KpiCard label="Present Staff" value={presentStaff} color="text-green-400" />
             <KpiCard label="Absent Staff" value={absentStaff} color="text-red-400" />
             <KpiCard label="Dashboard State" value={loading ? "Loading" : "Live"} color="text-white" />
