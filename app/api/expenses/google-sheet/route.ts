@@ -91,12 +91,21 @@ function normalizeDate(rawDate: string): Date {
   if (!rawDate) return new Date();
   const cleaned = rawDate.trim().replace(/\//g, "-").replace(/\./g, "-");
 
-  // Format: DD-MM-YYYY
+  // Format: MM-DD-YYYY or MM/DD/YYYY (MONTH / DATE / YEAR)
   if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(cleaned)) {
-    const [d, m, y] = cleaned.split("-");
+    const [m, d, y] = cleaned.split("-");
     const dateObj = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T00:00:00.000Z`);
     if (!isNaN(dateObj.getTime())) return dateObj;
   }
+
+  // Format: MM-DD-YY or MM/DD/YY (2-digit year)
+  if (/^\d{1,2}-\d{1,2}-\d{2}$/.test(cleaned)) {
+    const [m, d, yy] = cleaned.split("-");
+    const y = parseInt(yy, 10) < 50 ? `20${yy}` : `19${yy}`;
+    const dateObj = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T00:00:00.000Z`);
+    if (!isNaN(dateObj.getTime())) return dateObj;
+  }
+
   // Format: YYYY-MM-DD
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cleaned)) {
     const [y, m, d] = cleaned.split("-");
@@ -187,7 +196,8 @@ export async function GET(req: Request) {
 
       return {
         rowNumber: rowIdx + 2,
-        date: rawDate,
+        date: rawDate ? normalizeDate(rawDate).toISOString().split("T")[0] : "",
+        rawDate,
         amount: isNaN(amount) ? 0 : amount,
         category: detected.category !== -1 ? toUpperStr(r[detected.category]) : null,
         description: detected.description !== -1 ? toUpperStr(r[detected.description]) : null,
