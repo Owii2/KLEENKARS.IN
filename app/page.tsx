@@ -6,6 +6,9 @@ import { ChatBotWidget } from "@/components/ui/ChatBotWidget";
 import { OfferModal } from "@/components/homepage/OfferModal";
 import { ServicesGrid } from "@/components/homepage/ServicesGrid";
 import { PriceEstimator } from "@/components/homepage/PriceEstimator";
+import { prisma } from "@/lib/prisma";
+
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Kleenkars — Premium Car Wash & Car Detailing Studio in Aligarh",
@@ -16,7 +19,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  let featuredPrice = 399;
+  try {
+    const rainyDaySvc = await prisma.service.findFirst({
+      where: {
+        isActive: true,
+        name: { contains: "Rainy Day", mode: "insensitive" },
+      },
+      orderBy: { price: "asc" },
+    });
+    if (rainyDaySvc) {
+      featuredPrice = rainyDaySvc.price;
+    }
+  } catch (err) {
+    console.error("Error fetching featured service price:", err);
+  }
   const stats = [
     { label: "Google Rating", value: "5.0★" },
     { label: "Google Reviews", value: "16+" },
@@ -201,7 +219,7 @@ export default function HomePage() {
                         <p className="text-sm text-gray-400 uppercase tracking-[0.35em]">Featured Service</p>
                         <h2 className="text-2xl font-bold mt-3 text-white">Rainy Day Shine Package</h2>
                       </div>
-                      <span className="text-red-500 font-black text-xl">₹399</span>
+                      <span className="text-red-500 font-black text-xl">₹{featuredPrice}</span>
                     </div>
 
                     <div className="space-y-4">

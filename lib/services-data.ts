@@ -98,7 +98,7 @@ export const SERVICES_DATA: Record<string, ServiceDetail> = {
       "Protect your car with self-healing TPU Paint Protection Film (PPF) in Aligarh. Defense against rock chips, scratches, key marks, and yellowing. Book online.",
     focusKeyword: "PPF Aligarh",
     heroImage: "/full_detailing.png",
-    priceRange: "Custom Quote by Vehicle Size",
+    priceRange: "Starting at ₹35,000",
     overview:
       "Kleenkars specializes in ultra-clear Thermoplastic Polyurethane (TPU) Paint Protection Film (PPF) installation in Aligarh. Engineered to withstand high-velocity stone chips, road gravel, and parking scratches, our self-healing films heal surface scuffs when exposed to heat while maintaining perfect optical clarity.",
     benefits: [
@@ -159,7 +159,7 @@ export const SERVICES_DATA: Record<string, ServiceDetail> = {
       "Professional dual-action paint correction and scratch removal in Aligarh. Eliminate swirl marks, buffer trails, and oxidation. Restore factory gloss.",
     focusKeyword: "paint correction Aligarh",
     heroImage: "/full_detailing.png",
-    priceRange: "Starting at ₹2,499",
+    priceRange: "Starting at ₹1,499",
     overview:
       "Over time, dry rag wipes, harsh wash sponges, and environmental contamination create microscopic scratches known as swirl marks. Kleenkars' multi-stage dual-action paint correction process carefully levels clear coat imperfections, permanently eliminating swirl marks, buffer trails, and oxidation to reveal pure mirror gloss.",
     benefits: [
@@ -214,7 +214,7 @@ export const SERVICES_DATA: Record<string, ServiceDetail> = {
       "Deep car interior detailing & steam sanitization in Aligarh. 140°C steam cleaning, leather conditioning, AC duct disinfection, stain & odor removal.",
     focusKeyword: "interior detailing Aligarh",
     heroImage: "/deepclean.png",
-    priceRange: "Starting at ₹1,499",
+    priceRange: "Starting at ₹1,299",
     overview:
       "Your car cabin is a closed environment where dust, sweat, bacteria, and allergens accumulate in fabric fibers and AC vents. Kleenkars' Interior Steam Spa utilizes 140°C pressurized dry steam to deep clean seats, floor carpets, headliners, and dashboard panels while sanitizing the entire air conditioning circulation system.",
     benefits: [
@@ -270,7 +270,7 @@ export const SERVICES_DATA: Record<string, ServiceDetail> = {
       "Aligarh's top-rated doorstep car wash service. Soft filtered water, pH-neutral snow foam, underbody blast, interior vacuuming, free pickup & drop.",
     focusKeyword: "car wash Aligarh",
     heroImage: "/rainyday.png",
-    priceRange: "Starting at ₹299",
+    priceRange: "Starting at ₹149",
     overview:
       "Kleenkars redefines routine car washing in Aligarh. Unlike roadside washes using hard water and harsh detergents that dull paint, we utilize soft filtered water, thick pH-neutral snow foam cannons, plush 500+ GSM microfiber drying towels, and comprehensive underbody pressure blasts—with convenient doorstep pickup across Aligarh.",
     benefits: [
@@ -326,7 +326,7 @@ export const SERVICES_DATA: Record<string, ServiceDetail> = {
       "Transform your car with a Full Vehicle Spa in Aligarh. Exterior foam wash, paint gloss enhancement, interior steam cleaning, wheel restoration, and tire shine.",
     focusKeyword: "car spa Aligarh",
     heroImage: "/tyre&rim.png",
-    priceRange: "Starting at ₹1,999",
+    priceRange: "Starting at ₹399",
     overview:
       "The Kleenkars Full Car Spa is our flagship 360-degree deep care treatment. Designed to treat every inch of your automobile, it combines an exterior decontamination wash, single-stage gloss polish, complete interior steam cleaning, alloy wheel restoration, glass sealant, and engine bay dress.",
     benefits: [

@@ -2,6 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
 import { SERVICES_DATA } from "@/lib/services-data";
+import { prisma } from "@/lib/prisma";
+
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Car Detailing Services in Aligarh | Ceramic Coating, PPF, Wash & Spa",
@@ -12,8 +15,46 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ServicesIndexPage() {
-  const servicesList = Object.values(SERVICES_DATA);
+export default async function ServicesIndexPage() {
+  const staticServices = Object.values(SERVICES_DATA);
+
+  // Fetch live active services from database to ensure 100% price consistency
+  let dbServices: any[] = [];
+  try {
+    dbServices = await prisma.service.findMany({
+      where: { isActive: true },
+    });
+  } catch (err) {
+    console.error("Error fetching db services in ServicesIndexPage:", err);
+  }
+
+  const getDynamicPriceRange = (slug: string, fallback: string) => {
+    if (!dbServices || dbServices.length === 0) return fallback;
+
+    const matchingPrices = dbServices
+      .filter((s) => {
+        const n = s.name.toLowerCase();
+        if (slug === "ceramic-coating") return n.includes("ceramic") || n.includes("coating");
+        if (slug === "paint-protection-film") return n.includes("ppf") || n.includes("film");
+        if (slug === "paint-correction") return n.includes("correction") || n.includes("restoration");
+        if (slug === "interior-detailing") return n.includes("interior") || n.includes("cabin");
+        if (slug === "car-wash") return n.includes("wash") && !n.includes("rainy");
+        if (slug === "car-spa") return n.includes("spa") || n.includes("rainy");
+        if (slug === "headlight-restoration") return n.includes("headlight");
+        if (slug === "windshield-coating") return n.includes("windshield");
+        return false;
+      })
+      .map((s) => s.price);
+
+    if (matchingPrices.length === 0) return fallback;
+    const minP = Math.min(...matchingPrices);
+    return `Starting at ₹${minP.toLocaleString()}`;
+  };
+
+  const servicesList = staticServices.map((svc) => ({
+    ...svc,
+    priceRange: getDynamicPriceRange(svc.slug, svc.priceRange),
+  }));
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -95,7 +136,7 @@ export default function ServicesIndexPage() {
 
               <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-red-400 bg-red-950/40 border border-red-500/20 px-2.5 py-0.5 rounded-full inline-block">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-red-400 bg-red-950/40 border border-red-500/20 px-2.5 py-0.5 rounded-full inline-block font-mono">
                     {svc.priceRange}
                   </span>
                   <h2 className="text-xl font-bold text-white group-hover:text-red-400 transition-colors">

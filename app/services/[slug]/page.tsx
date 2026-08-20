@@ -1,25 +1,27 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { SERVICES_DATA } from "@/lib/services-data";
+import { SERVICES_DATA, ServiceDetail } from "@/lib/services-data";
 import { prisma } from "@/lib/prisma";
 
-export function generateStaticParams() {
+export const revalidate = 0;
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
   return Object.keys(SERVICES_DATA).map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const service = SERVICES_DATA[slug];
 
   if (!service) {
     return {
-      title: "Service Not Found",
+      title: "Service Not Found | Kleenkars",
     };
   }
 
@@ -29,12 +31,7 @@ export async function generateMetadata({
   return {
     title: service.metaTitle,
     description: service.metaDescription,
-    keywords: [
-      service.focusKeyword,
-      `${service.shortName} Aligarh`,
-      "Car Detailing Aligarh",
-      "Kleenkars Aligarh",
-    ],
+    keywords: [service.focusKeyword, "car detailing Aligarh", "car wash Aligarh", "Kleenkars"],
     alternates: {
       canonical: canonicalUrl,
     },
@@ -42,10 +39,14 @@ export async function generateMetadata({
       title: service.metaTitle,
       description: service.metaDescription,
       url: canonicalUrl,
+      siteName: "Kleenkars",
+      locale: "en_IN",
       type: "website",
       images: [
         {
           url: service.heroImage,
+          width: 1200,
+          height: 630,
           alt: service.name,
         },
       ],
@@ -59,11 +60,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function ServiceDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function ServiceDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const service = SERVICES_DATA[slug];
 
@@ -73,28 +70,32 @@ export default async function ServiceDetailPage({
 
   // Fetch live active services from database to keep pricing 100% consistent with admin settings
   let displayPriceRange = service.priceRange;
+  let matchingDbServices: any[] = [];
+
   try {
     const dbServices = await prisma.service.findMany({
       where: { isActive: true },
+      orderBy: { price: "asc" },
     });
 
-    const matchingPrices = dbServices
-      .filter((s) => {
-        const n = s.name.toLowerCase();
-        if (slug === "ceramic-coating") return n.includes("ceramic") || n.includes("coating");
-        if (slug === "paint-protection-film") return n.includes("ppf") || n.includes("film");
-        if (slug === "paint-correction") return n.includes("correction") || n.includes("restoration") || n.includes("polish");
-        if (slug === "interior-detailing") return n.includes("interior") || n.includes("cabin");
-        if (slug === "car-wash") return n.includes("wash") || n.includes("foam");
-        if (slug === "car-spa") return n.includes("spa") || n.includes("wash");
-        return false;
-      })
-      .map((s) => s.price);
+    matchingDbServices = dbServices.filter((s) => {
+      const n = s.name.toLowerCase();
+      if (slug === "ceramic-coating") return n.includes("ceramic") || n.includes("coating");
+      if (slug === "paint-protection-film") return n.includes("ppf") || n.includes("film");
+      if (slug === "paint-correction") return n.includes("correction") || n.includes("restoration");
+      if (slug === "interior-detailing") return n.includes("interior") || n.includes("cabin");
+      if (slug === "car-wash") return n.includes("wash") && !n.includes("rainy");
+      if (slug === "car-spa") return n.includes("spa") || n.includes("rainy");
+      if (slug === "headlight-restoration") return n.includes("headlight");
+      if (slug === "windshield-coating") return n.includes("windshield");
+      return false;
+    });
 
-    if (matchingPrices.length > 0) {
-      const minP = Math.min(...matchingPrices);
-      const maxP = Math.max(...matchingPrices);
-      displayPriceRange = minP === maxP ? `₹${minP}` : `Starting at ₹${minP}`;
+    if (matchingDbServices.length > 0) {
+      const prices = matchingDbServices.map((s) => s.price);
+      const minP = Math.min(...prices);
+      const maxP = Math.max(...prices);
+      displayPriceRange = minP === maxP ? `₹${minP.toLocaleString()}` : `Starting at ₹${minP.toLocaleString()}`;
     }
   } catch (err) {
     console.error("Error fetching db services for price consistency:", err);
@@ -124,14 +125,14 @@ export default async function ServiceDetailPage({
           {
             "@type": "ListItem",
             "position": 3,
-            "name": service.shortName,
+            "name": service.name,
             "item": canonicalUrl,
           },
         ],
       },
       {
         "@type": "Service",
-        "@id": `${canonicalUrl}#service`,
+        "@id": canonicalUrl,
         "name": service.name,
         "description": service.overview,
         "provider": {
@@ -196,7 +197,7 @@ export default async function ServiceDetailPage({
               <span className="text-[10px] uppercase font-bold tracking-widest text-red-400 bg-red-950/40 border border-red-500/20 px-3 py-1 rounded-full">
                 Aligarh Detailing Service
               </span>
-              <span className="text-xs text-gray-400">{displayPriceRange}</span>
+              <span className="text-xs font-mono font-bold text-gray-300">{displayPriceRange}</span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
@@ -253,6 +254,27 @@ export default async function ServiceDetailPage({
                 ))}
               </ul>
             </div>
+
+            {/* LIVE VEHICLE PRICING BREAKDOWN */}
+            {matchingDbServices.length > 0 && (
+              <div className="space-y-4 bg-zinc-950 p-5 rounded-2xl border border-zinc-800">
+                <h3 className="text-base font-bold text-white flex items-center justify-between">
+                  <span>Available Package Variants</span>
+                  <span className="text-xs font-mono font-normal text-gray-400">Live Studio Rates</span>
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {matchingDbServices.map((svc) => (
+                    <div key={svc.id} className="p-3 bg-black/60 border border-zinc-850 rounded-xl flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-white">{svc.name}</div>
+                        {svc.description && <div className="text-[10px] text-gray-500 line-clamp-1">{svc.description}</div>}
+                      </div>
+                      <span className="text-xs font-mono font-extrabold text-red-400">₹{svc.price.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 space-y-6 h-fit">
@@ -269,7 +291,7 @@ export default async function ServiceDetailPage({
             <div className="pt-4 border-t border-zinc-900">
               <Link
                 href="/booking"
-                className="w-full block text-center bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition"
+                className="w-full block text-center bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition shadow-lg shadow-red-600/20"
               >
                 Reserve Slot Now
               </Link>
@@ -300,47 +322,26 @@ export default async function ServiceDetailPage({
             </div>
             <Link
               href={`/blog/${service.relatedBlogSlug}`}
-              className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl border border-zinc-700 transition"
+              className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl border border-zinc-700 transition"
             >
-              Read Expert Guide →
+              Read Detailing Guide →
             </Link>
           </div>
         )}
 
-        {/* FAQS SECTION */}
+        {/* FAQS */}
         <div className="space-y-6 pt-6 border-t border-zinc-900">
           <h2 className="text-2xl font-bold text-white">Frequently Asked Questions</h2>
           <div className="grid gap-4">
             {service.faqs.map((faq, idx) => (
               <div key={idx} className="bg-zinc-950 p-6 rounded-2xl border border-zinc-800 space-y-2">
-                <h3 className="text-base font-bold text-white">{faq.question}</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">{faq.answer}</p>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span className="text-red-500 font-bold">Q.</span>
+                  {faq.question}
+                </h3>
+                <p className="text-xs text-gray-400 leading-relaxed pl-5">{faq.answer}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* FINAL CTA BANNER */}
-        <div className="p-8 rounded-3xl bg-gradient-to-r from-red-950/40 via-zinc-900 to-black border border-red-500/40 text-center space-y-4">
-          <h2 className="text-2xl sm:text-3xl font-black text-white">
-            Experience Premium {service.shortName} in Aligarh
-          </h2>
-          <p className="text-gray-400 text-xs max-w-lg mx-auto">
-            Doorstep pickup &amp; drop available across Aligarh. Book your slot online or call our detailing specialists today.
-          </p>
-          <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
-            <Link
-              href="/booking"
-              className="w-full sm:w-auto text-center bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-3.5 rounded-xl transition min-h-[44px] flex items-center justify-center"
-            >
-              Book Service Now
-            </Link>
-            <Link
-              href="/packages"
-              className="w-full sm:w-auto text-center bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-3.5 rounded-xl transition min-h-[44px] flex items-center justify-center"
-            >
-              Compare All Packages
-            </Link>
           </div>
         </div>
       </div>
