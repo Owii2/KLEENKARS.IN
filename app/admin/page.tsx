@@ -189,7 +189,62 @@ export default function AdminPage() {
     return top;
   }, [transactions]);
 
-  const averageTicket = transactions.length ? Math.round(totalRevenue / transactions.length) : 0;
+  const ticketMetrics = useMemo(() => {
+    let bikeCount = 0;
+    let bikeRevenue = 0;
+    let carCount = 0;
+    let carRevenue = 0;
+    let detailingCount = 0;
+    let detailingRevenue = 0;
+
+    transactions.forEach((t) => {
+      const vType = (t.vehicleType || "").toUpperCase();
+      const service = (t.serviceOpted || "").toUpperCase();
+      const amt = t.finalAmount ?? t.amount ?? 0;
+
+      const isBike =
+        vType.includes("BIKE") ||
+        vType.includes("SCOOTY") ||
+        vType.includes("ACTIVA") ||
+        vType.includes("TWO WHEELER") ||
+        service.includes("BIKE");
+      const isDetailing =
+        service.includes("DETAIL") ||
+        service.includes("CERAMIC") ||
+        service.includes("PPF") ||
+        service.includes("COAT") ||
+        service.includes("POLISH") ||
+        service.includes("RUBBING") ||
+        service.includes("DEEP") ||
+        amt >= 1000;
+
+      if (isDetailing) {
+        detailingCount++;
+        detailingRevenue += amt;
+      } else if (isBike) {
+        bikeCount++;
+        bikeRevenue += amt;
+      } else {
+        carCount++;
+        carRevenue += amt;
+      }
+    });
+
+    return {
+      overallAvg: transactions.length ? Math.round(totalRevenue / transactions.length) : 0,
+      carAvg: carCount ? Math.round(carRevenue / carCount) : 0,
+      carCount,
+      carRevenue,
+      bikeAvg: bikeCount ? Math.round(bikeRevenue / bikeCount) : 0,
+      bikeCount,
+      bikeRevenue,
+      detailingAvg: detailingCount ? Math.round(detailingRevenue / detailingCount) : 0,
+      detailingCount,
+      detailingRevenue,
+    };
+  }, [transactions, totalRevenue]);
+
+  const averageTicket = ticketMetrics.overallAvg;
   const pendingBookings = bookings.filter((b) => b.status === "Pending").length;
   const inProgress = bookings.filter((b) => ["Assigned", "Washing"].includes(b.status)).length;
   const completedJobs = bookings.filter((b) => ["Completed", "Delivered"].includes(b.status)).length;
@@ -452,14 +507,35 @@ export default function AdminPage() {
             <KpiCard label="UPI Revenue" value={`₹${upiRevenue.toLocaleString("en-IN")}`} color="text-cyan-400" />
             <KpiCard label="Total Revenue" value={`₹${totalRevenue.toLocaleString("en-IN")}`} color="text-green-400" />
             <KpiCard label="Total Transactions" value={transactions.length} color="text-purple-400" />
-            <KpiCard label="Online Bookings" value={bookings.length} color="text-blue-400" />
+            
+            {/* SEPARATE AVERAGE TICKET SIZES */}
+            <KpiCard
+              label="🚗 Car Wash Avg Ticket"
+              value={`₹${ticketMetrics.carAvg}`}
+              color="text-amber-400"
+            />
+            <KpiCard
+              label="🏍️ Bike Wash Avg Ticket"
+              value={`₹${ticketMetrics.bikeAvg}`}
+              color="text-teal-400"
+            />
+            <KpiCard
+              label="✨ Detailing Avg Ticket"
+              value={`₹${ticketMetrics.detailingAvg}`}
+              color="text-fuchsia-400"
+            />
+            <KpiCard
+              label="📊 Overall Avg Ticket"
+              value={`₹${ticketMetrics.overallAvg}`}
+              color="text-yellow-400"
+            />
+
             <KpiCard label="Top Service" value={topService} color="text-indigo-400" />
             <KpiCard label="Top Customer" value={topCustomer} color="text-pink-400" />
             <KpiCard label="Top Employee" value={topEmployee} color="text-orange-400" />
-            <KpiCard label="Avg Ticket Size" value={`₹${averageTicket.toLocaleString("en-IN")}`} color="text-yellow-400" />
             <KpiCard label="Present Staff" value={presentStaff} color="text-green-400" />
             <KpiCard label="Absent Staff" value={absentStaff} color="text-red-400" />
-            <KpiCard label="Dashboard State" value={loading ? "Loading" : "Live"} color="text-white" />
+            <KpiCard label="Online Bookings" value={bookings.length} color="text-blue-400" />
           </div>
 
           {/* Charts section – two cards side‑by‑side on large screens */}

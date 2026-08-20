@@ -115,8 +115,50 @@ export default function ReportsPage() {
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
   
-  const totalTicketCount = filteredBookings.length + filteredTransactions.length;
-  const averageTicket = totalTicketCount > 0 ? totalRevenue / totalTicketCount : 0;
+  const totalTicketCount = filteredTransactions.length || filteredBookings.length || 1;
+  const averageTicket = totalRevenue / totalTicketCount;
+
+  // Separate category tickets
+  let carCount = 0, carRev = 0;
+  let bikeCount = 0, bikeRev = 0;
+  let detailingCount = 0, detailingRev = 0;
+
+  filteredTransactions.forEach((t) => {
+    const vType = (t.vehicleType || "").toUpperCase();
+    const service = (t.serviceOpted || "").toUpperCase();
+    const amt = t.finalAmount ?? t.amount ?? 0;
+
+    const isBike =
+      vType.includes("BIKE") ||
+      vType.includes("SCOOTY") ||
+      vType.includes("ACTIVA") ||
+      vType.includes("TWO WHEELER") ||
+      service.includes("BIKE");
+    const isDetailing =
+      service.includes("DETAIL") ||
+      service.includes("CERAMIC") ||
+      service.includes("PPF") ||
+      service.includes("COAT") ||
+      service.includes("POLISH") ||
+      service.includes("RUBBING") ||
+      service.includes("DEEP") ||
+      amt >= 1000;
+
+    if (isDetailing) {
+      detailingCount++;
+      detailingRev += amt;
+    } else if (isBike) {
+      bikeCount++;
+      bikeRev += amt;
+    } else {
+      carCount++;
+      carRev += amt;
+    }
+  });
+
+  const carAvgTicket = carCount ? Math.round(carRev / carCount) : 0;
+  const bikeAvgTicket = bikeCount ? Math.round(bikeRev / bikeCount) : 0;
+  const detailingAvgTicket = detailingCount ? Math.round(detailingRev / detailingCount) : 0;
 
   // Expense grouping
   const expenseByCategory = filteredExpenses.reduce((acc: Record<string, number>, curr) => {
@@ -463,22 +505,30 @@ export default function ReportsPage() {
               <div>
                 <h3 className="text-lg font-bold text-white mb-2">Workload Metrics</h3>
                 <p className="text-xs text-gray-500 mb-6">Average service order size and volumes</p>
-                <div className="space-y-4 pt-2">
+                <div className="space-y-3 pt-2">
                   <div className="flex justify-between items-center py-2 border-b border-gray-850">
-                    <span className="text-xs text-gray-400">Average Ticket Size</span>
-                    <span className="text-base font-bold text-white font-mono">₹{Math.round(averageTicket).toLocaleString()}</span>
+                    <span className="text-xs text-amber-400 font-semibold flex items-center gap-1">🚗 Car Wash Avg Ticket</span>
+                    <span className="text-sm font-bold text-white font-mono">₹{carAvgTicket.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-850">
-                    <span className="text-xs text-gray-400">Bookings Scheduled</span>
-                    <span className="text-base font-bold text-white font-mono">{filteredBookings.length} orders</span>
+                    <span className="text-xs text-teal-400 font-semibold flex items-center gap-1">🏍️ Bike Wash Avg Ticket</span>
+                    <span className="text-sm font-bold text-white font-mono">₹{bikeAvgTicket.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-850">
-                    <span className="text-xs text-gray-400">Transactions Processed</span>
-                    <span className="text-base font-bold text-white font-mono">{filteredTransactions.length} sales</span>
+                    <span className="text-xs text-fuchsia-400 font-semibold flex items-center gap-1">✨ Detailing Avg Ticket</span>
+                    <span className="text-sm font-bold text-white font-mono">₹{detailingAvgTicket.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-xs text-gray-400">Expenses Filed</span>
-                    <span className="text-base font-bold text-white font-mono">{filteredExpenses.length} files</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-850">
+                    <span className="text-xs text-yellow-400 font-bold flex items-center gap-1">📊 Overall Avg Ticket</span>
+                    <span className="text-base font-black text-white font-mono">₹{Math.round(averageTicket).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-gray-850">
+                    <span className="text-xs text-gray-400">Transactions Logged</span>
+                    <span className="text-xs font-bold text-white font-mono">{filteredTransactions.length} sales</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-xs text-gray-400">Online Bookings</span>
+                    <span className="text-xs font-bold text-white font-mono">{filteredBookings.length} orders</span>
                   </div>
                 </div>
               </div>
