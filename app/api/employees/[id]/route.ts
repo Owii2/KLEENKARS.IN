@@ -8,15 +8,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRoles(["admin", "manager"]);
-
-  if (auth.response) {
-    return auth.response;
-  }
+  if (auth.response) return auth.response;
 
   try {
-
-    const body = await req.json();
     const { id } = await params;
+    const body = await req.json();
     const existingEmployee = await prisma.employee.findUnique({ where: { id } });
 
     if (!existingEmployee) {
@@ -38,6 +34,25 @@ export async function PUT(
       );
     }
 
+    let branchId = body.branchId;
+    let branchName = body.branch;
+
+    if (branchId !== undefined && branchName === undefined) {
+      if (branchId) {
+        const b = await prisma.branch.findUnique({ where: { id: branchId } });
+        branchName = b?.name || null;
+      } else {
+        branchName = null;
+      }
+    } else if (branchName !== undefined && branchId === undefined) {
+      if (branchName) {
+        const b = await prisma.branch.findFirst({ where: { name: { equals: branchName, mode: "insensitive" } } });
+        branchId = b?.id || null;
+      } else {
+        branchId = null;
+      }
+    }
+
     const updateData: any = {
       employeeCode: body.employeeCode,
       name: body.name,
@@ -49,7 +64,8 @@ export async function PUT(
       aadhaarNumber: body.aadhaarNumber,
       address: body.address,
       emergencyContact: body.emergencyContact,
-      branch: body.branch,
+      branch: branchName !== undefined ? branchName : undefined,
+      branchId: branchId !== undefined ? branchId : undefined,
       shiftType: body.shiftType,
       notes: body.notes,
       jobsCompleted: body.jobsCompleted !== undefined ? Number(body.jobsCompleted) : undefined,
@@ -66,9 +82,7 @@ export async function PUT(
     }
 
     const employee = await prisma.employee.update({
-      where: {
-        id,
-      },
+      where: { id },
       data: updateData,
     });
 
@@ -76,18 +90,11 @@ export async function PUT(
       success: true,
       employee,
     });
-
-  } catch (error) {
-
-    console.log(error);
-
+  } catch (error: any) {
+    console.error("Update Employee Error:", error);
     return NextResponse.json(
-      {
-        success: false,
-      },
-      {
-        status: 500,
-      }
+      { success: false, message: error.message || "Failed to update employee" },
+      { status: 500 }
     );
   }
 }
@@ -97,17 +104,28 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRoles(["admin", "manager"]);
-
-  if (auth.response) {
-    return auth.response;
-  }
+  if (auth.response) return auth.response;
 
   try {
     const { id } = await params;
+    const employee = await prisma.employee.findUnique({ where: { id } });
+
+    if (!employee) {
+      return NextResponse.json({ success: false, message: "Employee not found" }, { status: 404 });
+    }
+
+    await prisma.attendance.deleteMany({ where: { employeeId: id } });
+    await prisma.payroll.deleteMany({ where: { employeeId: id } });
     await prisma.employee.delete({ where: { id } });
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.log(error);
-    return NextResponse.json({ success: false, message: "Delete failed" }, { status: 550 });
+
+    return NextResponse.json({
+      success: true,
+      message: `Employee ${employee.name} deleted successfully`,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, message: error.message || "Failed to delete employee" },
+      { status: 500 }
+    );
   }
 }

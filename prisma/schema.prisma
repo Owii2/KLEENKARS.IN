@@ -121,6 +121,8 @@ model Employee {
   emergencyContact String?
 
   branch String?
+  branchId String?
+  branchRel Branch? @relation(fields: [branchId], references: [id])
 
   shiftType String?
 
@@ -565,5 +567,23 @@ model Transaction {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   createdBy        String?  // Username or email of creator
+}
+
+model Branch {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  name        String
+  address     String?
+  city        String?    @default("Delhi")
+  state       String?    @default("Delhi")
+  pincode     String?
+  phone       String?
+  email       String?
+  managerName String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  employees   Employee[]
 }
 

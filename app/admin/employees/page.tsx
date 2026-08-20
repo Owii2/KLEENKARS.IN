@@ -37,6 +37,7 @@ export default function EmployeePage() {
 
   // Data States
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
 
@@ -123,8 +124,19 @@ export default function EmployeePage() {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const response = await fetch("/api/branches");
+      const data = await response.json();
+      setBranches(data.branches || []);
+    } catch (error) {
+      console.error("Failed to load branches:", error);
+    }
+  };
+
   useEffect(() => {
     fetchEmployees();
+    fetchBranches();
     setEmployeeCode(generateEmployeeCode());
     fetchAttendance();
   }, []);
@@ -436,6 +448,7 @@ export default function EmployeePage() {
                 <tr>
                   <th className="px-6 py-4">Staff Code</th>
                   <th className="px-6 py-4">Name</th>
+                  <th className="px-6 py-4">Branch</th>
                   <th className="px-6 py-4">Role</th>
                   <th className="px-6 py-4">Salary/Day</th>
                   <th className="px-6 py-4">Phone</th>
@@ -459,6 +472,11 @@ export default function EmployeePage() {
                       {employee.email && (
                         <div className="text-gray-500 text-xs mt-0.5">{employee.email}</div>
                       )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-amber-950/20 text-amber-400 border border-amber-800/30 text-[11px] font-bold px-2 py-0.5 rounded-lg">
+                        {employee.branch || "Unassigned"}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="bg-[#1e1e1e] text-gray-300 text-xs px-2.5 py-1 rounded-full font-medium border border-gray-800">
@@ -865,6 +883,22 @@ export default function EmployeePage() {
                       {currentUserRole === "admin" && <option value="manager">Manager</option>}
                     </select>
                   </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-gray-500 text-xs font-semibold">Assigned Branch / Hub</label>
+                    <select
+                      value={drawerData.branch || ""}
+                      onChange={(e) => setDrawerData({ ...drawerData, branch: e.target.value })}
+                      className="bg-black border border-gray-800 p-2.5 rounded-lg text-sm text-white focus:border-red-600 outline-none"
+                    >
+                      <option value="">-- Unassigned --</option>
+                      {branches.map((b) => (
+                        <option key={b.id} value={b.name}>
+                          {b.code} - {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1124,12 +1158,18 @@ export default function EmployeePage() {
 
                     <div className="flex flex-col gap-1">
                       <label className="text-gray-400 text-xs font-semibold">Branch Assignment</label>
-                      <input
-                        placeholder="e.g. Rohini"
+                      <select
                         value={branch}
                         onChange={(e) => setBranch(e.target.value)}
                         className="bg-black border border-gray-800 p-2.5 rounded-lg text-sm text-white focus:border-red-600 outline-none"
-                      />
+                      >
+                        <option value="">-- Unassigned --</option>
+                        {branches.map((b) => (
+                          <option key={b.id} value={b.name}>
+                            {b.code} - {b.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

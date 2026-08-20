@@ -35,6 +35,9 @@ export default function Sidebar() {
         <Link href="/admin/employees" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Employees
         </Link>
+        <Link href="/admin/branches" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl font-semibold text-amber-400 border border-amber-500/10">
+          🏢 Branches & Hubs
+        </Link>
         <Link href="/admin/attendance" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Attendance
         </Link>

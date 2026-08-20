@@ -29,6 +29,7 @@ interface Employee {
 // Quick links for admin navigation – displayed in a vertical sidebar
 const quickLinks = [
   { href: "/admin/bookings", label: "Bookings", description: "Manage all bookings" },
+  { href: "/admin/branches", label: "🏢 Branches & Hubs", description: "Multi-branch setup & crew allocation" },
   { href: "/admin/employees", label: "Employees", description: "Manage staff accounts" },
   { href: "/admin/attendance", label: "Attendance", description: "Track daily staff attendance" },
   { href: "/admin/customers", label: "Customers", description: "CRM and repeat customers" },
@@ -475,7 +476,11 @@ export default function AdminPage() {
           {/* Quick Actions Shortcuts */}
           <div className="glass-panel p-6">
             <h2 className="text-xl font-bold text-red-400 mb-4">Quick Shortcuts</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
+              <Link href="/admin/branches" className="flex flex-col items-center justify-center p-4 bg-white/5 hover:bg-amber-600/20 border border-amber-500/20 rounded-2xl text-center transition-all duration-200 group">
+                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏢</span>
+                <span className="font-semibold text-sm text-amber-400 group-hover:text-white">Branches & Hubs</span>
+              </Link>
               <Link href="/admin/blog" className="flex flex-col items-center justify-center p-4 bg-white/5 hover:bg-red-600/20 border border-white/10 rounded-2xl text-center transition-all duration-200 group">
                 <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">✍️</span>
                 <span className="font-semibold text-sm text-gray-200 group-hover:text-white">Blog Manager</span>
