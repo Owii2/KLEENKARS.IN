@@ -56,6 +56,34 @@ export async function GET(req: Request) {
       _sum: { amount: true },
     });
 
+    // 4b. Fetch Wages / Payroll for this month
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const payrollThisMonth = await prisma.payroll.aggregate({
+      where: { month: currentMonthKey },
+      _sum: { netPayable: true },
+    });
+    const monthlyWages = payrollThisMonth._sum.netPayable || 0;
+
+    // Combine categories
+    const categoriesCombined = categoryGroup.map((g) => ({
+      category: g.category || "Uncategorized",
+      amount: g._sum.amount || 0,
+    }));
+
+    if (monthlyWages > 0) {
+      const existingSalaryIdx = categoriesCombined.findIndex(
+        (c) => c.category.toUpperCase() === "SALARY" || c.category.toUpperCase() === "WAGES"
+      );
+      if (existingSalaryIdx !== -1) {
+        categoriesCombined[existingSalaryIdx].amount += monthlyWages;
+      } else {
+        categoriesCombined.push({
+          category: "WAGES & SALARY",
+          amount: monthlyWages,
+        });
+      }
+    }
+
     // 5. Payment Mode breakdown (this month)
     const modeGroup = await prisma.expense.groupBy({
       by: ["paymentMode"],
@@ -78,25 +106,33 @@ export async function GET(req: Request) {
       take: 5,
     });
 
-    // 7. Monthly Expense Trend (last 6 months)
+    // 7. Monthly Expense Trend (last 6 months including wages)
     const trendData = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-      const sum = await prisma.expense.aggregate({
-        where: {
-          date: { gte: start, lte: end },
-        },
-        _sum: { amount: true },
-      });
+      const [sum, payrollSum] = await Promise.all([
+        prisma.expense.aggregate({
+          where: { date: { gte: start, lte: end } },
+          _sum: { amount: true },
+        }),
+        prisma.payroll.aggregate({
+          where: { month: monthKey },
+          _sum: { netPayable: true },
+        }),
+      ]);
 
+      const directAmount = sum._sum.amount || 0;
+      const payrollAmount = payrollSum._sum.netPayable || 0;
       const monthName = d.toLocaleString("default", { month: "short" });
+
       trendData.push({
         month: monthName,
         year: d.getFullYear(),
-        amount: sum._sum.amount || 0,
+        amount: directAmount + payrollAmount,
       });
     }
 
@@ -104,13 +140,10 @@ export async function GET(req: Request) {
       success: true,
       data: {
         totalToday: todaySum._sum.amount || 0,
-        totalThisMonth: monthSum._sum.amount || 0,
+        totalThisMonth: (monthSum._sum.amount || 0) + monthlyWages,
         cashExpensesThisMonth: cashSum._sum.amount || 0,
         upiExpensesThisMonth: upiSum._sum.amount || 0,
-        byCategory: categoryGroup.map((g) => ({
-          category: g.category || "Uncategorized",
-          amount: g._sum.amount || 0,
-        })),
+        byCategory: categoriesCombined,
         byPaymentMode: modeGroup.map((g) => ({
           paymentMode: g.paymentMode || "Unspecified",
           amount: g._sum.amount || 0,

@@ -27,10 +27,23 @@ interface WeeklyData {
   revenue: number;
 }
 
+interface Payroll {
+  id: string;
+  employeeName: string;
+  employeeCode: string;
+  month: string;
+  netPayable: number;
+  workingDays: number;
+  advances: number;
+  deductions: number;
+  createdAt: string;
+}
+
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<"analytics" | "backups">("analytics");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,22 +54,25 @@ export default function ReportsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [bookingsRes, expensesRes, weeklyRes, transactionsRes] = await Promise.all([
+      const [bookingsRes, expensesRes, weeklyRes, transactionsRes, payrollRes] = await Promise.all([
         fetch("/api/bookings"),
         fetch("/api/expenses"),
         fetch("/api/analytics/weekly"),
         fetch("/api/transactions"),
+        fetch("/api/payroll"),
       ]);
 
       const bookingsData = await bookingsRes.json();
       const expensesData = await expensesRes.json();
       const weeklyData = await weeklyRes.json();
       const transactionsData = await transactionsRes.json();
+      const payrollData = await payrollRes.json();
 
       setBookings(bookingsData.bookings || []);
       setExpenses(expensesData.expenses || []);
       setWeeklyData(weeklyData.data || []);
       setTransactions(transactionsData.transactions || []);
+      setPayrolls(payrollData.payrolls || []);
     } catch (err) {
       console.error("Failed to load analytical reports:", err);
     } finally {
@@ -108,10 +124,26 @@ export default function ReportsPage() {
     return true;
   });
 
-  // Totals calculations
-  const totalRevenue = filteredBookings.reduce((sum, b) => sum + (b.totalCost || 0), 0) +
-                       filteredTransactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  // Payroll/Wages filtering
+  const filteredPayrolls = payrolls.filter((p) => {
+    const pMonth = p.month;
+    if (timeFilter === "week") {
+      const pDate = new Date(p.createdAt || `${pMonth}-01`);
+      return pDate >= startOfWeek;
+    }
+    if (timeFilter === "month") {
+      const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      return pMonth === thisMonthStr;
+    }
+    return true;
+  });
+
+  const totalRevenue =
+    filteredBookings.reduce((sum, b) => sum + (b.totalCost || 0), 0) +
+    filteredTransactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
+  const totalPayrollCost = filteredPayrolls.reduce((sum, p) => sum + (p.netPayable || 0), 0);
+  const totalDirectExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalExpenses = totalDirectExpenses + totalPayrollCost;
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
   
@@ -160,12 +192,16 @@ export default function ReportsPage() {
   const bikeAvgTicket = bikeCount ? Math.round(bikeRev / bikeCount) : 0;
   const detailingAvgTicket = detailingCount ? Math.round(detailingRev / detailingCount) : 0;
 
-  // Expense grouping
+  // Operating Expense grouping (Direct Expenses + Staff Wages)
   const expenseByCategory = filteredExpenses.reduce((acc: Record<string, number>, curr) => {
-    const cat = curr.category || "Miscellaneous";
+    const cat = (curr.category || "Miscellaneous").toUpperCase();
     acc[cat] = (acc[cat] || 0) + curr.amount;
     return acc;
   }, {});
+
+  if (totalPayrollCost > 0) {
+    expenseByCategory["STAFF WAGES & PAYROLL"] = (expenseByCategory["STAFF WAGES & PAYROLL"] || 0) + totalPayrollCost;
+  }
 
   const sortedCategories = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1]);
 
