@@ -30,9 +30,37 @@ export default function AttendancePage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [syncingSheet, setSyncingSheet] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const currentYear = new Date().getFullYear();
+
+  const handleSyncGoogleSheet = async () => {
+    try {
+      setSyncingSheet(true);
+      setError("");
+      setSuccessMessage("");
+
+      const res = await fetch("/api/attendance/google-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSuccessMessage(data.message || "Attendance & Payroll synced from Google Sheet!");
+        setTimeout(() => setSuccessMessage(""), 5000);
+        fetchData();
+      } else {
+        setError(data.message || "Failed to sync attendance from Google Sheet.");
+      }
+    } catch (err: any) {
+      setError("Network error syncing attendance: " + err.message);
+    } finally {
+      setSyncingSheet(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -154,6 +182,41 @@ export default function AttendancePage() {
 
   return (
     <DashboardLayout title="Attendance">
+      {/* GOOGLE SHEET SYNC ACTIONS */}
+      <div className="bg-[#12121a] p-5 rounded-3xl border border-white/5 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xl">
+            📅
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white">Google Sheet Attendance &amp; Payroll Auto-Sync</h2>
+            <p className="text-xs text-gray-400">
+              Synchronizes all 46 columns: Daily check-ins (1-31), Present/Half/Absent counts, salary, and advances.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSyncGoogleSheet}
+          disabled={syncingSheet}
+          className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-950/40 cursor-pointer shrink-0"
+        >
+          <span>{syncingSheet ? "⏳ Reading Sheet & Syncing..." : "⚡ Sync from Google Sheet"}</span>
+        </button>
+      </div>
+
+      {successMessage && (
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-sm font-medium animate-in fade-in">
+          {successMessage}
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 p-4 rounded-2xl bg-red-950/40 border border-red-500/30 text-red-300 text-sm font-medium animate-in fade-in">
+          {error}
+        </div>
+      )}
+
       <Card className="mb-8">
         <div className="grid gap-4 lg:grid-cols-4">
           <div className="bg-[#111] border border-gray-800 rounded-xl p-4">
