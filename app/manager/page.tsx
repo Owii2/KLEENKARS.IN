@@ -240,16 +240,16 @@ export default function ManagerPage() {
         attendanceRes,
         transactionsRes
       ] = await Promise.all([
-        fetch("/api/bookings").then(r => r.ok ? r.json() : { bookings: [] }),
-        fetch("/api/employees").then(r => r.ok ? r.json() : { employees: [] }),
-        fetch("/api/services").then(r => r.ok ? r.json() : { services: [] }),
-        fetch("/api/customers").then(r => r.ok ? r.json() : { customers: [] }),
-        fetch("/api/inventory").then(r => r.ok ? r.json() : { items: [] }),
-        fetch("/api/expenses").then(r => r.ok ? r.json() : { expenses: [] }),
-        fetch("/api/membership-plans").then(r => r.ok ? r.json() : { plans: [] }),
-        fetch("/api/memberships").then(r => r.ok ? r.json() : { memberships: [] }),
-        fetch("/api/attendance").then(r => r.ok ? r.json() : { attendance: [] }),
-        fetch("/api/transactions").then(r => r.ok ? r.json() : { transactions: [] }),
+        fetch("/api/bookings", { cache: "no-store" }).then(r => r.ok ? r.json() : { bookings: [] }),
+        fetch("/api/employees", { cache: "no-store" }).then(r => r.ok ? r.json() : { employees: [] }),
+        fetch("/api/services", { cache: "no-store" }).then(r => r.ok ? r.json() : { services: [] }),
+        fetch("/api/customers", { cache: "no-store" }).then(r => r.ok ? r.json() : { customers: [] }),
+        fetch("/api/inventory", { cache: "no-store" }).then(r => r.ok ? r.json() : { items: [] }),
+        fetch("/api/expenses", { cache: "no-store" }).then(r => r.ok ? r.json() : { expenses: [] }),
+        fetch("/api/membership-plans", { cache: "no-store" }).then(r => r.ok ? r.json() : { plans: [] }),
+        fetch("/api/memberships", { cache: "no-store" }).then(r => r.ok ? r.json() : { memberships: [] }),
+        fetch("/api/attendance", { cache: "no-store" }).then(r => r.ok ? r.json() : { attendance: [] }),
+        fetch("/api/transactions", { cache: "no-store" }).then(r => r.ok ? r.json() : { transactions: [] }),
       ]);
 
       setBookings(bookingRes.bookings || []);
@@ -707,54 +707,75 @@ export default function ManagerPage() {
   }, []);
   const currentMonthStr = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
-  // Derived Calculations
+  // Derived Calculations - Strict Transactions as Single Source of Truth
   const statsOverview = useMemo(() => {
-    const bookingRevenue = bookings
-      .filter((b) => b.status !== "Cancelled" && b.status !== "Rejected")
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0);
-    const transactionRevenue = transactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-    const totalSales = bookingRevenue + transactionRevenue;
+    const totalSales = transactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
     const completedCount = bookings.filter((b) => b.status === "Completed").length;
     const activeStaffCount = employees.filter((e) => e.status === "active").length;
     const outgoingExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-    const todayRevenue = bookings
-      .filter((b) => b.bookingDate === todayStr && b.status !== "Cancelled" && b.status !== "Rejected")
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0) + 
-      transactions
+    const todayRevenue = transactions
       .filter((t) => t.date === todayStr)
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
 
-    const monthlyRevTotal = bookings
-      .filter((b) => b.bookingDate && b.bookingDate.startsWith(currentMonthStr) && b.status !== "Cancelled" && b.status !== "Rejected")
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0) + 
-      transactions
+    const monthlyRevTotal = transactions
       .filter((t) => t.date && t.date.startsWith(currentMonthStr))
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
 
-    const cashRevenue = bookings
-      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "CASH")
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0) + 
-      transactions
+    const cashRevenue = transactions
       .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "CASH")
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
 
-    const upiRevenue = bookings
-      .filter((b) => b.paymentMode && b.paymentMode.toUpperCase() === "UPI")
-      .reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0) + 
-      transactions
+    const upiRevenue = transactions
       .filter((t) => t.paymentMode && t.paymentMode.toUpperCase() === "UPI")
       .reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
 
-    // Top values
-    const serviceCounts: Record<string, number> = {};
-    bookings.forEach(b => {
-      if (b.serviceType && !b.serviceType.toLowerCase().includes("addon") && !b.serviceType.toLowerCase().includes("polish")) {
-        const baseName = getBaseServiceName(b.serviceType);
-        serviceCounts[baseName] = (serviceCounts[baseName] || 0) + 1;
+    // Separate ticket metrics
+    let carCount = 0, carRev = 0;
+    let bikeCount = 0, bikeRev = 0;
+    let detailingCount = 0, detailingRev = 0;
+
+    transactions.forEach((t) => {
+      const vType = (t.vehicleType || "").toUpperCase();
+      const service = (t.serviceOpted || "").toUpperCase();
+      const amt = t.finalAmount ?? t.amount ?? 0;
+
+      const isBike =
+        vType.includes("BIKE") ||
+        vType.includes("SCOOTY") ||
+        vType.includes("ACTIVA") ||
+        vType.includes("TWO WHEELER") ||
+        service.includes("BIKE");
+      const isDetailing =
+        service.includes("DETAIL") ||
+        service.includes("CERAMIC") ||
+        service.includes("PPF") ||
+        service.includes("COAT") ||
+        service.includes("POLISH") ||
+        service.includes("RUBBING") ||
+        service.includes("DEEP") ||
+        amt >= 1000;
+
+      if (isDetailing) {
+        detailingCount++;
+        detailingRev += amt;
+      } else if (isBike) {
+        bikeCount++;
+        bikeRev += amt;
+      } else {
+        carCount++;
+        carRev += amt;
       }
     });
-    transactions.forEach(t => {
+
+    const carAvg = carCount ? Math.round(carRev / carCount) : 0;
+    const bikeAvg = bikeCount ? Math.round(bikeRev / bikeCount) : 0;
+    const detailingAvg = detailingCount ? Math.round(detailingRev / detailingCount) : 0;
+    const overallAvg = transactions.length ? Math.round(totalSales / transactions.length) : 0;
+
+    // Top values
+    const serviceCounts: Record<string, number> = {};
+    transactions.forEach((t) => {
       if (t.serviceOpted && !t.serviceOpted.toLowerCase().includes("addon") && !t.serviceOpted.toLowerCase().includes("polish")) {
         const baseName = getBaseServiceName(t.serviceOpted);
         serviceCounts[baseName] = (serviceCounts[baseName] || 0) + 1;
@@ -770,10 +791,7 @@ export default function ManagerPage() {
     });
 
     const customerCounts: Record<string, number> = {};
-    bookings.forEach(b => {
-      if (b.customerName) customerCounts[b.customerName] = (customerCounts[b.customerName] || 0) + 1;
-    });
-    transactions.forEach(t => {
+    transactions.forEach((t) => {
       if (t.customerName) customerCounts[t.customerName] = (customerCounts[t.customerName] || 0) + 1;
     });
     let topCustomer = "None";
@@ -786,10 +804,7 @@ export default function ManagerPage() {
     });
 
     const employeeCounts: Record<string, number> = {};
-    bookings.forEach(b => {
-      if (b.assignedEmployeeName) employeeCounts[b.assignedEmployeeName] = (employeeCounts[b.assignedEmployeeName] || 0) + 1;
-    });
-    transactions.forEach(t => {
+    transactions.forEach((t) => {
       if (t.assignedEmployee) employeeCounts[t.assignedEmployee] = (employeeCounts[t.assignedEmployee] || 0) + 1;
     });
     let topEmployee = "None";
@@ -813,8 +828,15 @@ export default function ManagerPage() {
       topService,
       topCustomer,
       topEmployee,
+      carAvg,
+      carCount,
+      bikeAvg,
+      bikeCount,
+      detailingAvg,
+      detailingCount,
+      overallAvg,
     };
-  }, [bookings, employees, expenses, transactions, todayStr, currentMonthStr]);
+  }, [employees, expenses, transactions, todayStr, currentMonthStr, bookings]);
 
   // Weekly analytics processing
   const weeklyGraphPoints = useMemo(() => {
@@ -1044,6 +1066,25 @@ export default function ManagerPage() {
                     <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">UPI Revenue</span>
                     <span className="text-2xl font-extrabold mt-2 text-cyan-400 font-mono">₹{statsOverview.upiRevenue.toLocaleString()}</span>
                   </div>
+
+                  {/* SEPARATE AVERAGE TICKETS */}
+                  <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-850 flex flex-col justify-between">
+                    <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">🚗 Car Wash Avg</span>
+                    <span className="text-2xl font-extrabold mt-2 text-amber-400 font-mono">₹{statsOverview.carAvg.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-850 flex flex-col justify-between">
+                    <span className="text-teal-400 text-xs font-bold uppercase tracking-wider">🏍️ Bike Wash Avg</span>
+                    <span className="text-2xl font-extrabold mt-2 text-teal-400 font-mono">₹{statsOverview.bikeAvg.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-850 flex flex-col justify-between">
+                    <span className="text-fuchsia-400 text-xs font-bold uppercase tracking-wider">✨ Detailing Avg</span>
+                    <span className="text-2xl font-extrabold mt-2 text-fuchsia-400 font-mono">₹{statsOverview.detailingAvg.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-850 flex flex-col justify-between">
+                    <span className="text-yellow-400 text-xs font-bold uppercase tracking-wider">📊 Overall Avg</span>
+                    <span className="text-2xl font-extrabold mt-2 text-yellow-400 font-mono">₹{statsOverview.overallAvg.toLocaleString()}</span>
+                  </div>
+
                   <div className="bg-[#0b0b0b] p-5 rounded-xl border border-gray-850 flex flex-col justify-between">
                     <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider font-bold">Top Service</span>
                     <span className="text-lg font-bold mt-2 text-indigo-400 truncate">{statsOverview.topService}</span>
