@@ -1,68 +1,62 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// Helper to get weekday name
-const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const orderedWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-const getWeekdayName = (createdAt: Date | null, dateStr: string | null, timeStr: string | null) => {
-  if (dateStr) {
-    const parts = dateStr.split("-");
-    if (parts.length >= 2) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parts[2] ? parseInt(parts[2], 10) : 1;
-      const d = new Date(year, month, day);
-      return weekdayNames[d.getDay()];
-    }
-  }
-  if (createdAt) {
-    const d = new Date(createdAt);
-    return weekdayNames[d.getDay()];
-  }
-  return null;
-};
-
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const [bookings, transactions] = await Promise.all([
-      prisma.booking.findMany({
-        select: { createdAt: true, totalCost: true, bookingDate: true, bookingTime: true },
-      }),
-      prisma.transaction.findMany({
-        select: { createdAt: true, amount: true, finalAmount: true, date: true, time: true },
-      })
-    ]);
+    const { searchParams } = new URL(req.url);
+    const filter = searchParams.get("filter") || "all";
 
-    // Aggregate by weekday
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const date = now.getDate();
+    const day = now.getDay();
+
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    const startOfWeek = new Date(year, month, date + diffToMonday, 0, 0, 0, 0);
+    const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, "0")}-${String(startOfWeek.getDate()).padStart(2, "0")}`;
+    const currentMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+    const transactions = await prisma.transaction.findMany({
+      select: { amount: true, finalAmount: true, date: true, createdAt: true },
+    });
+
     const agg: Record<string, { count: number; revenue: number }> = {};
-    
-    for (const b of bookings) {
-      const wd = getWeekdayName(b.createdAt, b.bookingDate, b.bookingTime);
-      if (!wd) continue;
-      if (!agg[wd]) agg[wd] = { count: 0, revenue: 0 };
-      agg[wd].count += 1;
-      agg[wd].revenue += b.totalCost ?? 0;
+    for (const d of orderedWeek) {
+      agg[d] = { count: 0, revenue: 0 };
     }
 
     for (const t of transactions) {
-      const wd = getWeekdayName(t.createdAt, t.date, t.time);
-      if (!wd) continue;
-      if (!agg[wd]) agg[wd] = { count: 0, revenue: 0 };
-      agg[wd].count += 1;
-      agg[wd].revenue += t.finalAmount ?? t.amount ?? 0;
+      const dateStr = t.date || (t.createdAt ? t.createdAt.toISOString().split("T")[0] : "");
+      if (!dateStr) continue;
+
+      if (filter === "month" && !dateStr.startsWith(currentMonthKey)) continue;
+      if (filter === "week" && dateStr < startOfWeekStr) continue;
+
+      // Extract day of week
+      const parts = dateStr.split("-");
+      if (parts.length >= 3) {
+        const dObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        const wdName = weekdayNames[dObj.getDay()];
+        if (agg[wdName]) {
+          agg[wdName].count += 1;
+          agg[wdName].revenue += t.finalAmount ?? t.amount ?? 0;
+        }
+      }
     }
 
-    // Convert to sorted array (Monday first)
-    const orderedWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const data = orderedWeek.map((day) => ({
-      day,
-      bookings: agg[day]?.count ?? 0,
-      revenue: agg[day]?.revenue ?? 0,
+    const data = orderedWeek.map((dayName) => ({
+      day: dayName,
+      bookings: agg[dayName]?.count ?? 0,
+      revenue: agg[dayName]?.revenue ?? 0,
     }));
 
     return NextResponse.json({ success: true, data });
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ success: false, message: 'Failed to compute analytics' }, { status: 500 });
+    console.error("Weekly Analytics Error:", err);
+    return NextResponse.json({ success: false, message: "Failed to compute analytics" }, { status: 500 });
   }
 }

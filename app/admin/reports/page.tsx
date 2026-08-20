@@ -15,9 +15,11 @@ interface Booking {
 
 interface Expense {
   id: string;
-  title: string;
+  title?: string;
+  description?: string;
   amount: number;
   category: string;
+  date?: string;
   createdAt: string;
 }
 
@@ -57,7 +59,7 @@ export default function ReportsPage() {
       const [bookingsRes, expensesRes, weeklyRes, transactionsRes, payrollRes] = await Promise.all([
         fetch("/api/bookings"),
         fetch("/api/expenses"),
-        fetch("/api/analytics/weekly"),
+        fetch(`/api/analytics/weekly?filter=${timeFilter}`),
         fetch("/api/transactions"),
         fetch("/api/payroll"),
       ]);
@@ -82,72 +84,72 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [timeFilter]);
 
-  // Filter calculations based on selection
+  // Filter calculations based on selection (IST-aware)
   const now = new Date();
-  const startOfWeek = new Date(now);
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const date = now.getDate();
   const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  startOfWeek.setDate(diff);
-  startOfWeek.setHours(0, 0, 0, 0);
 
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  const startOfWeek = new Date(year, month, date + diffToMonday, 0, 0, 0, 0);
+  const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, "0")}-${String(startOfWeek.getDate()).padStart(2, "0")}`;
+  const currentMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
 
   const filteredBookings = bookings.filter((b) => {
     if (b.status === "Cancelled") return false;
-    const bDate = new Date(b.createdAt || b.bookingDate);
-    if (timeFilter === "week") return bDate >= startOfWeek;
-    if (timeFilter === "month") return bDate >= startOfMonth;
+    const bDateStr = b.bookingDate || (b.createdAt ? b.createdAt.split("T")[0] : "");
+    if (!bDateStr) return false;
+    if (timeFilter === "week") return bDateStr >= startOfWeekStr;
+    if (timeFilter === "month") return bDateStr.startsWith(currentMonthKey);
     return true;
   });
 
   const filteredTransactions = transactions.filter((t) => {
-    const tDate = new Date(t.createdAt || t.date);
-    if (timeFilter === "week") return tDate >= startOfWeek;
-    if (timeFilter === "month") return tDate >= startOfMonth;
+    const tDateStr = t.date || (t.createdAt ? t.createdAt.split("T")[0] : "");
+    if (!tDateStr) return false;
+    if (timeFilter === "week") return tDateStr >= startOfWeekStr;
+    if (timeFilter === "month") return tDateStr.startsWith(currentMonthKey);
     return true;
   });
 
   const filteredExpenses = expenses.filter((e) => {
-    const eDate = new Date(e.createdAt);
-    if (timeFilter === "week") return eDate >= startOfWeek;
-    if (timeFilter === "month") return eDate >= startOfMonth;
-    return true;
-  });
-
-  // Filter weekly data according to the same time filter
-  const filteredWeeklyData = weeklyData.filter((d) => {
-    const dDate = new Date(d.day);
-    if (timeFilter === "week") return dDate >= startOfWeek;
-    if (timeFilter === "month") return dDate >= startOfMonth;
+    const eDateStr = e.date
+      ? typeof e.date === "string"
+        ? e.date.split("T")[0]
+        : new Date(e.date).toISOString().split("T")[0]
+      : e.createdAt
+      ? e.createdAt.split("T")[0]
+      : "";
+    if (!eDateStr) return false;
+    if (timeFilter === "week") return eDateStr >= startOfWeekStr;
+    if (timeFilter === "month") return eDateStr.startsWith(currentMonthKey);
     return true;
   });
 
   // Payroll/Wages filtering
   const filteredPayrolls = payrolls.filter((p) => {
-    const pMonth = p.month;
-    if (timeFilter === "week") {
-      const pDate = new Date(p.createdAt || `${pMonth}-01`);
-      return pDate >= startOfWeek;
-    }
-    if (timeFilter === "month") {
-      const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      return pMonth === thisMonthStr;
+    if (timeFilter === "week" || timeFilter === "month") {
+      return p.month === currentMonthKey;
     }
     return true;
   });
 
-  const totalRevenue =
-    filteredBookings.reduce((sum, b) => sum + (b.totalCost || 0), 0) +
-    filteredTransactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
+  // Transactions is single source of truth for completed store revenue
+  const totalRevenue = filteredTransactions.reduce(
+    (sum, t) => sum + (t.finalAmount ?? t.amount ?? 0),
+    0
+  );
   const totalPayrollCost = filteredPayrolls.reduce((sum, p) => sum + (p.netPayable || 0), 0);
+  const effectivePayrollCost = timeFilter === "week" ? Math.round(totalPayrollCost / 4) : totalPayrollCost;
   const totalDirectExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const totalExpenses = totalDirectExpenses + totalPayrollCost;
+  const totalExpenses = totalDirectExpenses + effectivePayrollCost;
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-  
-  const totalTicketCount = filteredTransactions.length || filteredBookings.length || 1;
+
+  const totalTicketCount = filteredTransactions.length || 1;
   const averageTicket = totalRevenue / totalTicketCount;
 
   // Separate category tickets
@@ -199,20 +201,20 @@ export default function ReportsPage() {
     return acc;
   }, {});
 
-  if (totalPayrollCost > 0) {
-    expenseByCategory["STAFF WAGES & PAYROLL"] = (expenseByCategory["STAFF WAGES & PAYROLL"] || 0) + totalPayrollCost;
+  if (effectivePayrollCost > 0) {
+    expenseByCategory["STAFF WAGES & PAYROLL"] = (expenseByCategory["STAFF WAGES & PAYROLL"] || 0) + effectivePayrollCost;
   }
 
   const sortedCategories = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1]);
 
   // Chart preparation
-  const maxWeeklyRevenue = Math.max(...filteredWeeklyData.map((d) => d.revenue), 1000);
-  const maxWeeklyBookings = Math.max(...filteredWeeklyData.map((d) => d.bookings), 5);
+  const maxWeeklyRevenue = Math.max(...weeklyData.map((d) => d.revenue), 1000);
+  const maxWeeklyBookings = Math.max(...weeklyData.map((d) => d.bookings), 5);
 
   // SVG Line Chart path generators
   const generateLinePath = () => {
-    if (filteredWeeklyData.length === 0) return "";
-    return filteredWeeklyData
+    if (weeklyData.length === 0) return "";
+    return weeklyData
       .map((d, index) => {
         const x = 50 + index * 90;
         const y = 250 - (d.revenue / maxWeeklyRevenue) * 180;
@@ -222,10 +224,10 @@ export default function ReportsPage() {
   };
 
   const generateAreaPath = () => {
-    if (filteredWeeklyData.length === 0) return "";
+    if (weeklyData.length === 0) return "";
     const linePath = generateLinePath();
     const firstX = 50;
-    const lastX = 50 + (filteredWeeklyData.length - 1) * 90;
+    const lastX = 50 + (weeklyData.length - 1) * 90;
     return `${linePath} L ${lastX} 250 L ${firstX} 250 Z`;
   };
 
@@ -346,7 +348,7 @@ export default function ReportsPage() {
               <h3 className="text-lg font-bold text-white mb-2">Weekly Revenue Trends</h3>
               <p className="text-xs text-gray-500 mb-6">Booking billing distribution across current week days (₹)</p>
 
-              {filteredWeeklyData.length === 0 ? (
+              {weeklyData.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-gray-600 text-sm">
                   Insufficient data points
                 </div>
@@ -386,7 +388,7 @@ export default function ReportsPage() {
                     />
 
                     {/* Interaction Points */}
-                    {filteredWeeklyData.map((d, index) => {
+                    {weeklyData.map((d, index) => {
                       const x = 50 + index * 90;
                       const y = 250 - (d.revenue / maxWeeklyRevenue) * 180;
                       return (
@@ -406,7 +408,7 @@ export default function ReportsPage() {
                     })}
 
                     {/* X axis labels */}
-                    {filteredWeeklyData.map((d, index) => (
+                    {weeklyData.map((d, index) => (
                       <text
                         key={index}
                         x={50 + index * 90}
@@ -427,7 +429,7 @@ export default function ReportsPage() {
               <h3 className="text-lg font-bold text-white mb-2">Weekly Volume Scale</h3>
               <p className="text-xs text-gray-500 mb-6">Total number of detailing deliverables per day</p>
 
-              {filteredWeeklyData.length === 0 ? (
+              {weeklyData.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-gray-600 text-sm">
                   Insufficient data points
                 </div>
@@ -455,7 +457,7 @@ export default function ReportsPage() {
                     ))}
 
                     {/* Bar Elements */}
-                    {filteredWeeklyData.map((d, index) => {
+                    {weeklyData.map((d, index) => {
                       const width = 28;
                       const height = (d.bookings / maxWeeklyBookings) * 180;
                       const x = 50 + index * 90 - width / 2;
@@ -484,7 +486,7 @@ export default function ReportsPage() {
                     })}
 
                     {/* X axis labels */}
-                    {filteredWeeklyData.map((d, index) => (
+                    {weeklyData.map((d, index) => (
                       <text
                         key={index}
                         x={50 + index * 90}
