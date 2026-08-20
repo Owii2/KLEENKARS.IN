@@ -731,7 +731,7 @@ export default function ManagerPage() {
   // Unified all work orders from Transactions + Online Bookings
   const allWorkOrders = useMemo(() => {
     const txnOrders: Booking[] = transactions.map((t) => ({
-      id: t.id || `TXN-${t.invoiceNumber || t.id}`,
+      id: t.invoiceId || t.id,
       customerName: t.customerName || "Customer",
       phoneNumber: t.customerMobile || "",
       vehicleType: t.vehicleType || "Car",
@@ -1563,13 +1563,13 @@ export default function ManagerPage() {
                             .filter((t) =>
                               !searchQuery ||
                               (t.customerName && t.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                              (t.invoiceNumber && String(t.invoiceNumber).includes(searchQuery)) ||
+                              (t.invoiceId && t.invoiceId.toLowerCase().includes(searchQuery.toLowerCase())) ||
                               (t.customerMobile && t.customerMobile.includes(searchQuery))
                             )
                             .map((t) => (
                               <tr key={t.id} className="hover:bg-white/5 transition-colors">
                                 <td className="px-4 py-3 font-mono text-red-500 font-bold">
-                                  #{t.invoiceNumber ? `KK-${String(t.invoiceNumber).padStart(4, "0")}` : t.id.substring(0, 8)}
+                                  {t.invoiceId || `#${t.id.substring(0, 8)}`}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="text-white font-semibold">{t.customerName || "Customer"}</div>
