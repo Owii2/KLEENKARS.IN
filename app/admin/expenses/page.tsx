@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import ExpenseGoogleSheetSync from "@/components/dashboard/ExpenseGoogleSheetSync";
 import Card from "@/components/ui/Card";
 import KpiCard from "@/components/ui/KpiCard";
 import {
@@ -94,7 +95,7 @@ export default function ExpensePage() {
   const [dashboardData, setDashboardData] = useState<any>(null);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"dashboard" | "list" | "reports" | "setup">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "list" | "reports" | "setup" | "google-sheet">("dashboard");
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -570,6 +571,16 @@ export default function ExpensePage() {
             }`}
           >
             Reporting
+          </button>
+          <button
+            onClick={() => setActiveTab("google-sheet")}
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-1.5 ${
+              activeTab === "google-sheet"
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-950/40"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <span>⚡ Google Sheet Sync</span>
           </button>
           {currentUser?.role === "admin" && (
             <button
@@ -1320,6 +1331,11 @@ export default function ExpensePage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {/* GOOGLE SHEET AUTO-SYNC TAB */}
+      {activeTab === "google-sheet" && (
+        <ExpenseGoogleSheetSync onSyncComplete={loadAll} />
       )}
 
       {/* CSV IMPORT WIZARD MODAL */}
