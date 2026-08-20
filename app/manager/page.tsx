@@ -99,11 +99,14 @@ interface InventoryItem {
 
 interface Expense {
   id: string;
-  title: string;
+  title?: string;
+  description?: string;
   amount: number;
   category: string;
-  paymentMode: string;
-  notes: string | null;
+  paymentMode?: string;
+  paidTo?: string;
+  notes?: string | null;
+  date?: string;
   createdAt: string;
 }
 
@@ -614,6 +617,45 @@ export default function ManagerPage() {
     }
   };
 
+  const [syncingAttendance, setSyncingAttendance] = useState(false);
+  const [syncingExpenses, setSyncingExpenses] = useState(false);
+
+  const handleSyncAttendance = async () => {
+    try {
+      setSyncingAttendance(true);
+      const res = await fetch("/api/attendance/google-sheet", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`✅ Synced ${data.importedCount} attendance check-ins and ${data.payrollRecordsCount} payroll records from Google Sheet!`);
+        fetchData();
+      } else {
+        alert(data.message || "Failed to sync attendance");
+      }
+    } catch (e) {
+      alert("Error syncing attendance sheet");
+    } finally {
+      setSyncingAttendance(false);
+    }
+  };
+
+  const handleSyncExpenses = async () => {
+    try {
+      setSyncingExpenses(true);
+      const res = await fetch("/api/expenses/google-sheet", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`✅ Synced ${data.importedCount} expenses (Total: ₹${(data.totalAmount || 0).toLocaleString()}) from Google Sheet!`);
+        fetchData();
+      } else {
+        alert(data.message || "Failed to sync expenses");
+      }
+    } catch (e) {
+      alert("Error syncing expenses sheet");
+    } finally {
+      setSyncingExpenses(false);
+    }
+  };
+
   // Invoice downloader
   const handleDownloadInvoice = (booking: Booking) => {
     const doc = new jsPDF();
@@ -686,17 +728,41 @@ export default function ManagerPage() {
     doc.save(`Kleenkars_Invoice_${booking.customerName.replace(/\s+/g, "_")}.pdf`);
   };
 
+  // Unified all work orders from Transactions + Online Bookings
+  const allWorkOrders = useMemo(() => {
+    const txnOrders: Booking[] = transactions.map((t) => ({
+      id: t.id || `TXN-${t.invoiceNumber || t.id}`,
+      customerName: t.customerName || "Customer",
+      phoneNumber: t.customerMobile || "",
+      vehicleType: t.vehicleType || "Car",
+      serviceType: t.serviceOpted || "Car Wash",
+      bookingDate: t.date || (t.createdAt ? t.createdAt.split("T")[0] : ""),
+      bookingTime: t.time || "10:00 AM",
+      totalCost: t.amount || 0,
+      finalAmount: t.finalAmount ?? t.amount ?? 0,
+      discount: t.discount || 0,
+      status: t.status || "Completed",
+      assignedEmployeeName: t.assignedEmployee || null,
+      paymentMode: t.paymentMode || "Cash",
+    }));
+
+    const uniqueBookings = bookings.filter((b) => !txnOrders.some((to) => to.id === b.id));
+    return [...txnOrders, ...uniqueBookings];
+  }, [transactions, bookings]);
+
   // Filter Bookings Based on search and tabs
   const filteredBookings = useMemo(() => {
-    return bookings.filter((b) => {
-      const matchSearch = 
+    return allWorkOrders.filter((b) => {
+      const matchSearch =
+        !searchQuery ||
         b.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (b.phoneNumber && b.phoneNumber.includes(searchQuery));
-      const matchStatus = statusFilter === "all" || b.status === statusFilter;
+        (b.phoneNumber && b.phoneNumber.includes(searchQuery)) ||
+        (b.serviceType && b.serviceType.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchStatus = statusFilter === "all" || b.status.toLowerCase() === statusFilter.toLowerCase();
       return matchSearch && matchStatus;
     });
-  }, [bookings, searchQuery, statusFilter]);
+  }, [allWorkOrders, searchQuery, statusFilter]);
 
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -1477,30 +1543,51 @@ export default function ManagerPage() {
                 <div className="lg:col-span-2 space-y-6">
                   {/* Payments Log Card */}
                   <div className="bg-[#0b0b0b] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-                    <div className="p-4 border-b border-gray-850 bg-[#111]/50">
-                      <h3 className="text-lg font-bold text-white">Recent Payments ledger</h3>
+                    <div className="p-4 border-b border-gray-850 bg-[#111]/50 flex justify-between items-center">
+                      <h3 className="text-lg font-bold text-white">Recent Payments Ledger</h3>
+                      <span className="text-xs font-mono text-gray-500 font-bold">{transactions.length} Total Invoices</span>
                     </div>
-                    <div className="overflow-y-auto max-h-[300px]">
+                    <div className="overflow-y-auto max-h-[400px]">
                       <table className="w-full text-xs text-left">
-                        <thead className="bg-[#141414] text-gray-400 uppercase">
+                        <thead className="bg-[#141414] text-gray-400 uppercase sticky top-0">
                           <tr>
-                            <th className="px-4 py-3">Ref ID</th>
+                            <th className="px-4 py-3">Invoice Ref</th>
                             <th className="px-4 py-3">Customer</th>
-                            <th className="px-4 py-3 font-mono">Invoice Amount</th>
+                            <th className="px-4 py-3 font-mono">Amount</th>
                             <th className="px-4 py-3">Mode</th>
                             <th className="px-4 py-3">Date</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-850">
-                          {bookings
-                            .filter((b) => b.status === "Completed")
-                            .map((b) => (
-                              <tr key={b.id} className="hover:bg-white/5 transition-colors">
-                                <td className="px-4 py-3 font-mono text-red-500">#{b.id.substring(0, 8)}</td>
-                                <td className="px-4 py-3 text-white font-semibold">{b.customerName}</td>
-                                <td className="px-4 py-3 font-bold font-mono text-green-400">₹{b.finalAmount ?? b.totalCost}</td>
-                                <td className="px-4 py-3 text-gray-400">{b.paymentMode || "Cash"}</td>
-                                <td className="px-4 py-3 text-gray-500">{b.bookingDate}</td>
+                          {transactions
+                            .filter((t) =>
+                              !searchQuery ||
+                              (t.customerName && t.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                              (t.invoiceNumber && String(t.invoiceNumber).includes(searchQuery)) ||
+                              (t.customerMobile && t.customerMobile.includes(searchQuery))
+                            )
+                            .map((t) => (
+                              <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                                <td className="px-4 py-3 font-mono text-red-500 font-bold">
+                                  #{t.invoiceNumber ? `KK-${String(t.invoiceNumber).padStart(4, "0")}` : t.id.substring(0, 8)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-white font-semibold">{t.customerName || "Customer"}</div>
+                                  {t.customerMobile && <div className="text-[10px] text-gray-500">{t.customerMobile}</div>}
+                                </td>
+                                <td className="px-4 py-3 font-bold font-mono text-green-400">
+                                  ₹{(t.finalAmount ?? t.amount ?? 0).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    t.paymentMode?.toUpperCase() === "UPI"
+                                      ? "bg-cyan-950/40 text-cyan-400 border border-cyan-850"
+                                      : "bg-emerald-950/40 text-emerald-400 border border-emerald-850"
+                                  }`}>
+                                    {t.paymentMode || "Cash"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-gray-400 font-mono text-[11px]">{t.date || (t.createdAt ? t.createdAt.split("T")[0] : "")}</td>
                               </tr>
                             ))}
                         </tbody>
@@ -1561,8 +1648,19 @@ export default function ManagerPage() {
               <div className="space-y-6 animate-slide-up">
                 {/* Roster list today */}
                 <div className="bg-[#0b0b0b] border border-gray-800 p-6 rounded-xl shadow-xl">
-                  <h3 className="text-xl font-bold text-white mb-1">Today's Employee Attendance</h3>
-                  <p className="text-xs text-gray-500 mb-6">Log check-ins for the crew members on floor duties</p>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-white">Today's Employee Attendance</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Log check-ins for the crew members on floor duties</p>
+                    </div>
+                    <button
+                      onClick={handleSyncAttendance}
+                      disabled={syncingAttendance}
+                      className="bg-emerald-650 hover:bg-emerald-600 active:scale-[0.98] transition-all text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-900/30"
+                    >
+                      ⚡ {syncingAttendance ? "Syncing..." : "Sync from Google Sheet"}
+                    </button>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {employees
@@ -1614,12 +1712,13 @@ export default function ManagerPage() {
 
                 {/* Historical Log */}
                 <div className="bg-[#0b0b0b] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-                  <div className="p-4 border-b border-gray-850 bg-[#111]/50">
+                  <div className="p-4 border-b border-gray-850 bg-[#111]/50 flex justify-between items-center">
                     <h3 className="text-lg font-bold text-white">Historical Check-in Logs</h3>
+                    <span className="text-xs font-mono text-gray-500">{attendance.length} Records</span>
                   </div>
                   <div className="overflow-y-auto max-h-[300px]">
                     <table className="w-full text-xs text-left">
-                      <thead className="bg-[#141414] text-gray-400 uppercase">
+                      <thead className="bg-[#141414] text-gray-400 uppercase sticky top-0">
                         <tr>
                           <th className="px-6 py-3">Employee Name</th>
                           <th className="px-6 py-3">Punch Date</th>
@@ -1630,11 +1729,11 @@ export default function ManagerPage() {
                         {attendance.map((log) => (
                           <tr key={log.id} className="hover:bg-white/5 transition-colors">
                             <td className="px-6 py-3 font-semibold text-white">{log.employeeName}</td>
-                            <td className="px-6 py-3 text-gray-400">{new Date(log.checkIn).toLocaleString()}</td>
+                            <td className="px-6 py-3 text-gray-400 font-mono">{new Date(log.checkIn).toLocaleString()}</td>
                             <td className="px-6 py-3 text-center">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
                                 log.attendanceStatus === "present" ? "bg-green-950/40 text-green-400 border border-green-800/40" :
-                                log.attendanceStatus === "half day" ? "bg-yellow-950/40 text-yellow-400 border-yellow-800/40" :
+                                log.attendanceStatus === "half day" ? "bg-yellow-950/40 text-yellow-400 border border-yellow-800/40" :
                                 "bg-red-950/40 text-red-400 border border-red-800/40"
                               }`}>
                                 {log.attendanceStatus}
@@ -1819,33 +1918,52 @@ export default function ManagerPage() {
                 {/* Right Panel: Log list */}
                 <div className="lg:col-span-2">
                   <div className="bg-[#0b0b0b] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-                    <div className="p-4 border-b border-gray-850 bg-[#111]/50">
-                      <h3 className="text-lg font-bold text-white">Daily Expenses Log</h3>
+                    <div className="p-4 border-b border-gray-850 bg-[#111]/50 flex justify-between items-center">
+                      <div>
+                        <h3 className="text-lg font-bold text-white">Daily Expenses Log</h3>
+                        <p className="text-[10px] text-gray-500">Operating supplies, fuel, rent & store costs</p>
+                      </div>
+                      <button
+                        onClick={handleSyncExpenses}
+                        disabled={syncingExpenses}
+                        className="bg-emerald-650 hover:bg-emerald-600 active:scale-[0.98] transition-all text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-900/30"
+                      >
+                        ⚡ {syncingExpenses ? "Syncing..." : "Sync from Google Sheet"}
+                      </button>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto max-h-[400px]">
                       <table className="w-full text-xs text-left">
-                        <thead className="bg-[#141414] text-gray-400 uppercase">
+                        <thead className="bg-[#141414] text-gray-400 uppercase sticky top-0">
                           <tr>
-                            <th className="px-6 py-3">Expense Details</th>
-                            <th className="px-6 py-3">Category</th>
-                            <th className="px-6 py-3">Mode</th>
-                            <th className="px-6 py-3 font-mono text-right">Cost (₹)</th>
+                            <th className="px-4 py-3">Date</th>
+                            <th className="px-4 py-3">Expense Details</th>
+                            <th className="px-4 py-3">Category</th>
+                            <th className="px-4 py-3">Paid To / Mode</th>
+                            <th className="px-4 py-3 font-mono text-right">Cost (₹)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-850">
                           {expenses.map((exp) => (
                             <tr key={exp.id} className="hover:bg-white/5 transition-colors">
-                              <td className="px-6 py-3">
-                                <div className="font-semibold text-white">{exp.title}</div>
+                              <td className="px-4 py-3 text-gray-400 font-mono text-[11px] whitespace-nowrap">
+                                {exp.date || (exp.createdAt ? exp.createdAt.split("T")[0] : "")}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="font-bold text-white">{exp.description || exp.title}</div>
                                 {exp.notes && <div className="text-[10px] text-gray-500 italic mt-0.5">{exp.notes}</div>}
                               </td>
-                              <td className="px-6 py-3">
+                              <td className="px-4 py-3">
                                 <span className="bg-red-950/20 text-red-400 text-[9px] font-bold px-2 py-0.5 rounded border border-red-900/30 uppercase">
                                   {exp.category}
                                 </span>
                               </td>
-                              <td className="px-6 py-3 text-gray-400">{exp.paymentMode}</td>
-                              <td className="px-6 py-3 text-right font-bold font-mono text-red-400">-₹{exp.amount}</td>
+                              <td className="px-4 py-3 text-gray-400">
+                                <div>{exp.paidTo || "Vendor"}</div>
+                                <div className="text-[10px] text-gray-500">{exp.paymentMode || "Cash"}</div>
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold font-mono text-red-400">
+                                -₹{exp.amount.toLocaleString()}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
