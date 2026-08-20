@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/apiAuth";
 import { createApprovalRequest } from "@/lib/approval";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
@@ -22,16 +26,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         price: body.price,
         category: body.category,
         isActive: body.isActive,
-      }
+      },
     });
 
     if (user.role === "manager") {
       await createApprovalRequest("Service", service.id, "UPDATE", user.id, user.name, existing, service);
     }
 
-    return NextResponse.json({ success: true, service });
+    return NextResponse.json(
+      { success: true, service },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
-    console.error(error);
+    console.error("PUT /api/services/[id] error:", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
@@ -52,9 +63,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       await createApprovalRequest("Service", id, "DELETE", user.id, user.name, existing, null);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { success: true },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
-    console.error(error);
+    console.error("DELETE /api/services/[id] error:", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

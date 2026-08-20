@@ -5,14 +5,12 @@ import { Metadata } from "next";
 import { SERVICES_DATA, ServiceDetail } from "@/lib/services-data";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-}
-
-export async function generateStaticParams() {
-  return Object.keys(SERVICES_DATA).map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -68,7 +66,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Fetch live active services from database to keep pricing 100% consistent with admin settings
+  // Fetch live active services from database on each request to keep pricing 100% consistent with admin settings
   let displayPriceRange = service.priceRange;
   let matchingDbServices: any[] = [];
 
@@ -84,7 +82,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
       if (slug === "paint-protection-film") return n.includes("ppf") || n.includes("film");
       if (slug === "paint-correction") return n.includes("correction") || n.includes("restoration");
       if (slug === "interior-detailing") return n.includes("interior") || n.includes("cabin");
-      if (slug === "car-wash") return n.includes("wash") && !n.includes("rainy");
+      if (slug === "car-wash") return (n.includes("wash") || n.includes("express") || n.includes("classic") || n.includes("premium")) && !n.includes("spa") && !n.includes("rainy");
       if (slug === "car-spa") return n.includes("spa") || n.includes("rainy");
       if (slug === "headlight-restoration") return n.includes("headlight");
       if (slug === "windshield-coating") return n.includes("windshield");

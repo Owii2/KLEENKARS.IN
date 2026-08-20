@@ -4,7 +4,9 @@ import { Metadata } from "next";
 import { SERVICES_DATA } from "@/lib/services-data";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export const metadata: Metadata = {
   title: "Car Detailing Services in Aligarh | Ceramic Coating, PPF, Wash & Spa",
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
 export default async function ServicesIndexPage() {
   const staticServices = Object.values(SERVICES_DATA);
 
-  // Fetch live active services from database to ensure 100% price consistency
+  // Fetch live active services from database on every request
   let dbServices: any[] = [];
   try {
     dbServices = await prisma.service.findMany({
@@ -38,7 +40,7 @@ export default async function ServicesIndexPage() {
         if (slug === "paint-protection-film") return n.includes("ppf") || n.includes("film");
         if (slug === "paint-correction") return n.includes("correction") || n.includes("restoration");
         if (slug === "interior-detailing") return n.includes("interior") || n.includes("cabin");
-        if (slug === "car-wash") return n.includes("wash") && !n.includes("rainy");
+        if (slug === "car-wash") return (n.includes("wash") || n.includes("express") || n.includes("classic") || n.includes("premium")) && !n.includes("spa") && !n.includes("rainy");
         if (slug === "car-spa") return n.includes("spa") || n.includes("rainy");
         if (slug === "headlight-restoration") return n.includes("headlight");
         if (slug === "windshield-coating") return n.includes("windshield");

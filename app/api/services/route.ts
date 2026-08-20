@@ -3,14 +3,27 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/apiAuth";
 import { createApprovalRequest } from "@/lib/approval";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 export async function GET() {
   try {
     const services = await prisma.service.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
-    return NextResponse.json({ success: true, services });
+    return NextResponse.json(
+      { success: true, services },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0",
+        },
+      }
+    );
   } catch (error) {
-    console.error(error);
+    console.error("GET /api/services error:", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
@@ -28,7 +41,7 @@ export async function POST(req: Request) {
         price: body.price,
         category: body.category,
         isActive: body.isActive ?? true,
-      }
+      },
     });
 
     if (user.role === "manager") {
@@ -37,7 +50,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, service });
   } catch (error) {
-    console.error(error);
+    console.error("POST /api/services error:", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

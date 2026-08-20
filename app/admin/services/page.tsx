@@ -40,13 +40,6 @@ export default function ServicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
-  const getEditOptions = () => {
-    const currentVal = form.vehicleTypes[0] || "All";
-    const exists = BASE_VEHICLE_OPTIONS.some(opt => opt.value === currentVal);
-    if (exists) return BASE_VEHICLE_OPTIONS;
-    return [{ value: currentVal, label: currentVal }, ...BASE_VEHICLE_OPTIONS];
-  };
-
   const [form, setForm] = useState({
     baseName: "",
     vehicleTypes: ["All"] as string[],
@@ -58,12 +51,20 @@ export default function ServicesPage() {
 
   const fetchServices = async () => {
     setLoading(true);
-    const res = await fetch("/api/services");
-    const data = await res.json();
-    if (data.success) {
-      setServices(data.services);
+    try {
+      const res = await fetch(`/api/services?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Pragma": "no-cache" },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setServices(data.services);
+      }
+    } catch (err) {
+      console.error("Error fetching services:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -72,24 +73,9 @@ export default function ServicesPage() {
 
   const handleEdit = (svc: Service) => {
     setEditingId(svc.id);
-    const vehicleSpecificServicePattern = /^(.+?)\s*-\s*([A-Za-z0-9\/\-\s]+)$/i;
-    const match = svc.name.match(vehicleSpecificServicePattern);
-    const baseName = match ? match[1].trim() : svc.name;
-
-    const relatedServices = services.filter(s => {
-      const sm = s.name.match(vehicleSpecificServicePattern);
-      const sBase = sm ? sm[1].trim() : s.name;
-      return sBase.toLowerCase() === baseName.toLowerCase() && (s.isActive || s.id === svc.id);
-    });
-
-    const activeVehicleTypes = relatedServices.map(s => {
-      const sm = s.name.match(vehicleSpecificServicePattern);
-      return sm ? sm[2].trim() : "All";
-    });
-
     setForm({
-      baseName,
-      vehicleTypes: activeVehicleTypes.length > 0 ? activeVehicleTypes : ["All"],
+      baseName: svc.name,
+      vehicleTypes: ["All"],
       description: svc.description || "",
       price: svc.price.toString(),
       category: svc.category || "Wash",
@@ -120,142 +106,42 @@ export default function ServicesPage() {
       alert("Price must be a valid number");
       return;
     }
-    if (form.vehicleTypes.length === 0) {
-      alert("Please select at least one vehicle type");
-      return;
-    }
 
     const priceVal = parseInt(form.price) || 0;
 
     if (editingId) {
-      // Editing a service. Reconcile database records for this service group.
-      const originalSvc = services.find(s => s.id === editingId);
-      if (!originalSvc) return;
-
-      const vehicleSpecificServicePattern = /^(.+?)\s*-\s*([A-Za-z0-9\/\-\s]+)$/i;
-      const originalMatch = originalSvc.name.match(vehicleSpecificServicePattern);
-      const originalBaseName = originalMatch ? originalMatch[1].trim() : originalSvc.name;
-
-      // Find all variants currently in the database sharing the original base name
-      const originalVariants = services.filter(s => {
-        const sm = s.name.match(vehicleSpecificServicePattern);
-        const sBase = sm ? sm[1].trim() : s.name;
-        return sBase.toLowerCase() === originalBaseName.toLowerCase();
-      });
-
-      // Target full names for the selected vehicle types
-      const targetVariants = form.vehicleTypes.map(type => {
-        const fullName = type === "All"
-          ? form.baseName.trim()
-          : `${form.baseName.trim()} - ${type}`;
-        return { type, fullName };
-      });
-
-      // Check for name collisions with other services in the system
-      const originalVariantIds = originalVariants.map(ov => ov.id);
-      for (const target of targetVariants) {
-        const duplicate = services.find(s => 
-          s.name.toLowerCase() === target.fullName.toLowerCase() && 
-          !originalVariantIds.includes(s.id)
-        );
-        if (duplicate) {
-          alert(`A service named "${target.fullName}" already exists.`);
-          return;
-        }
-      }
-
-      const updatedNames: string[] = [];
-      const createdNames: string[] = [];
-      const deactivatedNames: string[] = [];
-      const failedNames: string[] = [];
-
-      // 1. Process selected vehicle types (Create new ones or update existing ones)
-      for (const target of targetVariants) {
-        // Find if this specific vehicle type exists in originalVariants
-        const existingSvc = originalVariants.find(ov => {
-          const ovm = ov.name.match(vehicleSpecificServicePattern);
-          const ovType = ovm ? ovm[2].trim() : "All";
-          return ovType.toLowerCase() === target.type.toLowerCase();
-        });
-
-        const payload = {
-          name: target.fullName,
-          description: form.description || null,
-          price: priceVal,
-          category: form.category,
-          isActive: form.isActive, // Apply checked state from form
-        };
-
-        if (existingSvc) {
-          // Update the existing service variant
-          const res = await fetch(`/api/services/${existingSvc.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          const data = await res.json();
-          if (data.success) {
-            updatedNames.push(target.fullName);
-          } else {
-            failedNames.push(target.fullName);
-          }
-        } else {
-          // Create a new service variant
-          const res = await fetch("/api/services", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          const data = await res.json();
-          if (data.success) {
-            createdNames.push(target.fullName);
-          } else {
-            failedNames.push(target.fullName);
-          }
-        }
-      }
-
-      // 2. Process deselected vehicle types (original variants whose vehicle types are not in target types)
-      const targetTypesLower = form.vehicleTypes.map(t => t.toLowerCase());
-      const deselectedVariants = originalVariants.filter(ov => {
-        const ovm = ov.name.match(vehicleSpecificServicePattern);
-        const ovType = ovm ? ovm[2].trim() : "All";
-        return !targetTypesLower.includes(ovType.toLowerCase());
-      });
-
-      for (const dv of deselectedVariants) {
-        // Deactivate the deselected variant
-        const res = await fetch(`/api/services/${dv.id}`, {
+      // Direct Single Service Edit
+      try {
+        const res = await fetch(`/api/services/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: dv.name,
-            description: dv.description,
-            price: dv.price,
-            category: dv.category,
-            isActive: false, // Set to inactive because it was deselected
+            name: form.baseName.trim(),
+            description: form.description || null,
+            price: priceVal,
+            category: form.category,
+            isActive: form.isActive,
           }),
         });
         const data = await res.json();
         if (data.success) {
-          deactivatedNames.push(dv.name);
+          setShowModal(false);
+          await fetchServices();
+          alert("✅ Service updated successfully!");
         } else {
-          failedNames.push(dv.name);
+          alert(data.message || "Failed to update service.");
         }
+      } catch (err) {
+        console.error("Error updating service:", err);
+        alert("Failed to update service due to a network error.");
+      }
+    } else {
+      // Adding new service(s)
+      if (form.vehicleTypes.length === 0) {
+        alert("Please select at least one vehicle type");
+        return;
       }
 
-      setShowModal(false);
-      fetchServices();
-
-      let message = "Services saved successfully.";
-      if (updatedNames.length > 0) message += `\nUpdated: ${updatedNames.join(", ")}`;
-      if (createdNames.length > 0) message += `\nCreated: ${createdNames.join(", ")}`;
-      if (deactivatedNames.length > 0) message += `\nDeactivated: ${deactivatedNames.join(", ")}`;
-      if (failedNames.length > 0) message += `\nFailed to save: ${failedNames.join(", ")}`;
-      alert(message);
-    } else {
-      // Adding new service(s) - could be multiple vehicle types selected
-      // We will create them one by one, ignoring duplicates
       const createdNames: string[] = [];
       const skippedNames: string[] = [];
 
@@ -289,7 +175,7 @@ export default function ServicesPage() {
 
       if (createdNames.length > 0) {
         setShowModal(false);
-        fetchServices();
+        await fetchServices();
         let message = `Successfully created ${createdNames.length} service(s).`;
         if (skippedNames.length > 0) {
           message += `\nSkipped duplicates: ${skippedNames.join(", ")}`;
@@ -304,9 +190,19 @@ export default function ServicesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
-    await fetch(`/api/services/${id}`, { method: "DELETE" });
-    fetchServices();
+    if (!confirm("Are you sure you want to delete this service?")) return;
+    try {
+      const res = await fetch(`/api/services/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        await fetchServices();
+        alert("✅ Service deleted successfully!");
+      } else {
+        alert(data.message || "Failed to delete service.");
+      }
+    } catch (err) {
+      console.error("Error deleting service:", err);
+    }
   };
 
   const filteredServices = services.filter((s) => {
@@ -430,54 +326,56 @@ export default function ServicesPage() {
       </Card>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-900 border border-zinc-700 p-6 rounded-2xl w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit' : 'Add'} Service</h2>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-zinc-900 border border-zinc-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+            <h2 className="text-xl font-bold mb-4 text-white">{editingId ? 'Edit Service' : 'Add New Service'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Service Name *</label>
                 <input
-                  placeholder="e.g. Classic Wash"
+                  placeholder="e.g. Classic Wash - Hatchback"
                   value={form.baseName}
                   onChange={e => setForm({...form, baseName: e.target.value})}
                   className="w-full bg-black border border-zinc-700 p-3 rounded text-white text-sm focus:outline-none focus:border-red-500"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">Vehicle Type(s) *</label>
-                <div className="grid grid-cols-2 gap-2 bg-black border border-zinc-700 p-3 rounded max-h-40 overflow-y-auto">
-                  {BASE_VEHICLE_OPTIONS.map(opt => {
-                    const isChecked = form.vehicleTypes.includes(opt.value);
-                    return (
-                      <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-xs text-gray-300 hover:text-white select-none">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            if (opt.value === "All") {
-                              setForm({ ...form, vehicleTypes: ["All"] });
-                            } else {
-                              let nextTypes = form.vehicleTypes.filter(v => v !== "All");
-                              if (isChecked) {
-                                nextTypes = nextTypes.filter(v => v !== opt.value);
+              {!editingId && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">Vehicle Type(s) *</label>
+                  <div className="grid grid-cols-2 gap-2 bg-black border border-zinc-700 p-3 rounded max-h-40 overflow-y-auto">
+                    {BASE_VEHICLE_OPTIONS.map(opt => {
+                      const isChecked = form.vehicleTypes.includes(opt.value);
+                      return (
+                        <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-xs text-gray-300 hover:text-white select-none">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (opt.value === "All") {
+                                setForm({ ...form, vehicleTypes: ["All"] });
                               } else {
-                                nextTypes.push(opt.value);
+                                let nextTypes = form.vehicleTypes.filter(v => v !== "All");
+                                if (isChecked) {
+                                  nextTypes = nextTypes.filter(v => v !== opt.value);
+                                } else {
+                                  nextTypes.push(opt.value);
+                                }
+                                if (nextTypes.length === 0) {
+                                  nextTypes = ["All"];
+                                }
+                                setForm({ ...form, vehicleTypes: nextTypes });
                               }
-                              if (nextTypes.length === 0) {
-                                nextTypes = ["All"];
-                              }
-                              setForm({ ...form, vehicleTypes: nextTypes });
-                            }
-                          }}
-                          className="w-4 h-4 accent-red-600 rounded"
-                        />
-                        {opt.label}
-                      </label>
-                    );
-                  })}
+                            }}
+                            className="w-4 h-4 accent-red-600 rounded"
+                          />
+                          {opt.label}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Category *</label>
@@ -496,7 +394,7 @@ export default function ServicesPage() {
               <div>
                 <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Description</label>
                 <textarea
-                  placeholder="Enter details..."
+                  placeholder="Enter service details..."
                   value={form.description}
                   onChange={e => setForm({...form, description: e.target.value})}
                   className="w-full bg-black border border-zinc-700 p-3 rounded h-20 text-white text-sm focus:outline-none focus:border-red-500 resize-none"
@@ -504,13 +402,13 @@ export default function ServicesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Price (Rs.) *</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Price (₹) *</label>
                 <input
                   type="number"
-                  placeholder="Price"
+                  placeholder="e.g. 299"
                   value={form.price}
                   onChange={e => setForm({...form, price: e.target.value})}
-                  className="w-full bg-black border border-zinc-700 p-3 rounded text-white text-sm focus:outline-none focus:border-red-500"
+                  className="w-full bg-black border border-zinc-700 p-3 rounded text-white text-sm focus:outline-none focus:border-red-500 font-mono font-bold"
                 />
               </div>
               
@@ -525,8 +423,8 @@ export default function ServicesPage() {
               </label>
 
               <div className="flex gap-2 pt-4">
-                <button onClick={() => setShowModal(false)} className="flex-1 bg-zinc-800 p-3 rounded text-sm font-semibold hover:bg-zinc-750 transition">Cancel</button>
-                <button onClick={handleSave} className="flex-1 bg-red-600 p-3 rounded font-bold text-sm hover:bg-red-500 transition">Save</button>
+                <button onClick={() => setShowModal(false)} className="flex-1 bg-zinc-800 p-3 rounded text-sm font-semibold hover:bg-zinc-750 transition text-gray-300">Cancel</button>
+                <button onClick={handleSave} className="flex-1 bg-red-600 p-3 rounded font-bold text-sm hover:bg-red-500 transition text-white">Save Changes</button>
               </div>
             </div>
           </div>
