@@ -77,6 +77,20 @@ function parseMonthString(rawMonth: string): { year: number; month: number; mont
     };
   }
 
+  // Format: M/D/YYYY or MM/DD/YYYY
+  if (cleaned.includes("/")) {
+    const parts = cleaned.split("/");
+    const m = parseInt(parts[0], 10);
+    const yr = parseInt(parts[2] || "2026", 10);
+    if (!isNaN(m) && !isNaN(yr)) {
+      return {
+        year: yr,
+        month: m,
+        monthKey: `${yr}-${String(m).padStart(2, "0")}`,
+      };
+    }
+  }
+
   // Format: YYYY-MM or YYYY-MM-DD
   if (/^\d{4}-\d{1,2}/.test(cleaned)) {
     const [y, m] = cleaned.split("-");
