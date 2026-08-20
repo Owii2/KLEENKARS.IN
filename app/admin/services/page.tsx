@@ -20,6 +20,9 @@ const BASE_VEHICLE_OPTIONS = [
   { value: "Sedan", label: "Sedan" },
   { value: "SUV", label: "SUV" },
   { value: "MUV", label: "MUV" },
+  { value: "SUV/MUV", label: "SUV/MUV (Combined)" },
+  { value: "Luxury", label: "Luxury / Exotic" },
+  { value: "Truck/Traveller", label: "Truck / Traveller" },
   { value: "Truck", label: "Truck" },
   { value: "Van", label: "Van" },
   { value: "Traveller", label: "Traveller" },
@@ -34,6 +37,8 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const getEditOptions = () => {
     const currentVal = form.vehicleTypes[0] || "All";
@@ -304,55 +309,117 @@ export default function ServicesPage() {
     fetchServices();
   };
 
+  const filteredServices = services.filter((s) => {
+    const matchSearch =
+      !searchQuery ||
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.description && s.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchCategory =
+      categoryFilter === "all" || (s.category && s.category.toLowerCase() === categoryFilter.toLowerCase());
+    return matchSearch && matchCategory;
+  });
+
   return (
     <DashboardLayout title="Dynamic Pricing & Services">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Manage Services</h2>
-        <button onClick={handleNew} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl font-bold">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <span>Manage Services & Dynamic Rates</span>
+            <span className="text-xs font-mono font-bold bg-white/10 text-gray-300 px-2.5 py-1 rounded-full">
+              {services.length} Total
+            </span>
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Prices configured here automatically update all customer pages, package listings, and booking calculators in real-time.
+          </p>
+        </div>
+        <button onClick={handleNew} className="bg-red-600 hover:bg-red-700 active:scale-[0.98] transition px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-red-900/30">
           + Add New Service
         </button>
       </div>
 
+      {/* Filter and Search Bar */}
+      <div className="bg-[#0b0b0b] border border-gray-800 p-4 rounded-2xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="relative flex-1 w-full max-w-md">
+          <input
+            type="text"
+            placeholder="Search service name, vehicle type, or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-black border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-red-600 transition"
+          />
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+          {["all", "Wash", "Detailing", "Spa", "Addon"].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition capitalize whitespace-nowrap ${
+                categoryFilter.toLowerCase() === cat.toLowerCase()
+                  ? "bg-red-650 text-white shadow-md shadow-red-900/30"
+                  : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {cat === "all" ? `All (${services.length})` : `${cat} (${services.filter(s => s.category?.toLowerCase() === cat.toLowerCase()).length})`}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="bg-red-600">
-                <th className="p-3 text-left">Name</th>
-                <th className="p-3 text-left">Vehicle Type</th>
-                <th className="p-3 text-left">Category</th>
-                <th className="p-3 text-left">Price (Rs.)</th>
-                <th className="p-3 text-left">Status</th>
+              <tr className="bg-red-600 text-xs uppercase tracking-wider text-left text-white">
+                <th className="p-3">Service Name</th>
+                <th className="p-3">Vehicle Type</th>
+                <th className="p-3">Category</th>
+                <th className="p-3 font-mono">Price (₹)</th>
+                <th className="p-3">Status</th>
                 <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-850">
               {loading ? (
-                <tr><td colSpan={6} className="p-4">Loading...</td></tr>
-              ) : services.map(svc => {
+                <tr><td colSpan={6} className="p-8 text-center text-gray-500 font-mono">Loading Services Registry...</td></tr>
+              ) : filteredServices.length === 0 ? (
+                <tr><td colSpan={6} className="p-8 text-center text-gray-500">No services match the specified filter.</td></tr>
+              ) : filteredServices.map(svc => {
                 const match = svc.name.match(/^(.+?)\s*-\s*([A-Za-z0-9\/\-\s]+)$/i);
                 const displayName = match ? match[1].trim() : svc.name;
                 const vehicleType = match ? match[2].trim() : "All";
                 return (
-                  <tr key={svc.id} className="border-b border-gray-800">
-                    <td className="p-3 font-medium">{displayName}</td>
+                  <tr key={svc.id} className="hover:bg-white/5 transition-colors">
+                    <td className="p-3 font-medium text-white">
+                      <div>{displayName}</div>
+                      {svc.description && <div className="text-[10px] text-gray-500 line-clamp-1 mt-0.5">{svc.description}</div>}
+                    </td>
                     <td className="p-3">
-                      <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-xs text-gray-300">
+                      <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-xs text-gray-300 font-mono">
                         {vehicleType}
                       </span>
                     </td>
-                    <td className="p-3">{svc.category || "-"}</td>
-                    <td className="p-3 font-bold text-green-400">{svc.price}</td>
+                    <td className="p-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
+                        svc.category?.toLowerCase() === "spa" ? "bg-purple-950/40 text-purple-400 border-purple-800/40" :
+                        svc.category?.toLowerCase() === "detailing" ? "bg-amber-950/40 text-amber-400 border-amber-800/40" :
+                        svc.category?.toLowerCase() === "addon" ? "bg-cyan-950/40 text-cyan-400 border-cyan-850" :
+                        "bg-emerald-950/40 text-emerald-400 border-emerald-850"
+                      }`}>
+                        {svc.category || "Wash"}
+                      </span>
+                    </td>
+                    <td className="p-3 font-bold font-mono text-green-400">₹{svc.price.toLocaleString()}</td>
                     <td className="p-3">
                       {svc.isActive ? (
-                        <span className="text-green-500 font-bold text-xs bg-green-500/20 px-2 py-1 rounded-full">Active</span>
+                        <span className="text-green-400 font-bold text-xs bg-green-950/40 border border-green-800/40 px-2.5 py-0.5 rounded-full">Active</span>
                       ) : (
-                        <span className="text-red-500 font-bold text-xs bg-red-500/20 px-2 py-1 rounded-full">Inactive</span>
+                        <span className="text-red-400 font-bold text-xs bg-red-950/40 border border-red-800/40 px-2.5 py-0.5 rounded-full">Inactive</span>
                       )}
                     </td>
-                    <td className="p-3 text-right">
-                      <button onClick={() => handleEdit(svc)} className="text-blue-400 mr-4 hover:underline">Edit</button>
-                      <button onClick={() => handleDelete(svc.id)} className="text-red-500 hover:underline">Delete</button>
+                    <td className="p-3 text-right space-x-2">
+                      <button onClick={() => handleEdit(svc)} className="text-cyan-400 font-bold hover:underline text-xs">Edit</button>
+                      <button onClick={() => handleDelete(svc.id)} className="text-red-400 font-bold hover:underline text-xs">Delete</button>
                     </td>
                   </tr>
                 );
@@ -420,8 +487,9 @@ export default function ServicesPage() {
                   className="w-full bg-black border border-zinc-700 p-3 rounded text-white text-sm focus:outline-none focus:border-red-500"
                 >
                   <option value="Wash">Wash</option>
-                  <option value="Addon">Addon</option>
                   <option value="Detailing">Detailing</option>
+                  <option value="Spa">Spa</option>
+                  <option value="Addon">Addon</option>
                 </select>
               </div>
 
