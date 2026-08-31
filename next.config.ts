@@ -1,28 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  compress: true,
-  poweredByHeader: false,
-  reactStrictMode: true,
-  experimental: {
-    optimizePackageImports: [
-      "lucide-react",
-      "recharts",
-      "fast-csv",
-      "jspdf",
-      "nodemailer",
-      "qrcode",
-    ],
-  },
-  images: {
-    formats: ["image/avif", "image/webp"],
-  },
-  compiler: {
-    removeConsole:
-      process.env.NODE_ENV === "production"
-        ? { exclude: ["error", "warn"] }
-        : false,
-  },
+  /* config options here */
   async redirects() {
     return [
       { source: "/hub", destination: "/connect", permanent: true },
