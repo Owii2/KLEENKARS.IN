@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       "fast-csv",
       "jspdf",
       "nodemailer",
+      "qrcode",
     ],
   },
   images: {
@@ -21,6 +22,13 @@ const nextConfig: NextConfig = {
       process.env.NODE_ENV === "production"
         ? { exclude: ["error", "warn"] }
         : false,
+  },
+  async redirects() {
+    return [
+      { source: "/hub", destination: "/connect", permanent: true },
+      { source: "/links", destination: "/connect", permanent: true },
+      { source: "/qr", destination: "/connect", permanent: true },
+    ];
   },
 };
 

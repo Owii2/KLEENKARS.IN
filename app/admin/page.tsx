@@ -35,6 +35,7 @@ const quickLinks = [
   { href: "/admin/customers", label: "Customers", description: "CRM and repeat customers" },
   { href: "/admin/expenses", label: "Expenses", description: "Track operational costs" },
   { href: "/admin/services", label: "Services & Pricing", description: "Manage wash packages and add‑ons" },
+  { href: "/admin/qr-hub", label: "📱 QR Hub & Links", description: "Customer QR portal, maps & review buttons" },
   { href: "/admin/offers", label: "Offers & Coupons", description: "Configure active promo codes" },
   { href: "/admin/referrals", label: "Referrals", description: "Reward customer referrals" },
   { href: "/admin/approvals", label: "Approvals", description: "Review manager overrides" },
@@ -476,7 +477,11 @@ export default function AdminPage() {
           {/* Quick Actions Shortcuts */}
           <div className="glass-panel p-6">
             <h2 className="text-xl font-bold text-red-400 mb-4">Quick Shortcuts</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-7 gap-4">
+              <Link href="/admin/qr-hub" className="flex flex-col items-center justify-center p-4 bg-red-600/10 hover:bg-red-600/20 border border-red-500/30 rounded-2xl text-center transition-all duration-200 group shadow-md shadow-red-950/20">
+                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">📱</span>
+                <span className="font-semibold text-sm text-red-300 group-hover:text-white">QR Hub &amp; Links</span>
+              </Link>
               <Link href="/admin/branches" className="flex flex-col items-center justify-center p-4 bg-white/5 hover:bg-amber-600/20 border border-amber-500/20 rounded-2xl text-center transition-all duration-200 group">
                 <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🏢</span>
                 <span className="font-semibold text-sm text-amber-400 group-hover:text-white">Branches & Hubs</span>

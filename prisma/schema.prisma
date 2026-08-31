@@ -587,3 +587,21 @@ model Branch {
   employees   Employee[]
 }
 
+model HubLink {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?
+  url         String
+  icon        String?  @default("globe") // map-pin, star, message-circle, phone, calendar, sparkles, car, globe, instagram, facebook, youtube
+  badge       String?  // e.g. "5.0 ★", "Instant Reply", "Popular", "Doorstep Pickup"
+  bgColor     String?  // Optional hex or tailwind accent
+  textColor   String?
+  isFeatured  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  clicksCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+

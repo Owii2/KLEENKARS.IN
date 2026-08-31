@@ -62,6 +62,9 @@ export default function Sidebar() {
         <Link href="/admin/services" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Services
         </Link>
+        <Link href="/admin/qr-hub" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl font-semibold text-red-300 border border-red-500/10">
+          📱 QR Hub &amp; Links
+        </Link>
         <Link href="/admin/offers" className="block bg-white/5 hover:bg-red-600 transition p-4 rounded-2xl">
           Offers
         </Link>
