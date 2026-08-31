@@ -1,13 +1,15 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --background: #050507;
   --foreground: #f7f7fb;
-  --surface: rgba(10, 10, 15, 0.65);
-  --surface-border: rgba(255, 255, 255, 0.07);
+  --surface: rgba(10, 10, 15, 0.75);
+  --surface-border: rgba(255, 255, 255, 0.08);
   --text-muted: #a1a1aa;
-  --brand-start: #ff6b6b;
-  --brand-end: #ff2d2d;
+  --brand-start: #ff5252;
+  --brand-end: #dc2626;
+  --brand-red: #e50914;
+  --brand-red-glow: rgba(220, 38, 38, 0.35);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -15,15 +17,16 @@
 body {
   min-height: 100vh;
   color: var(--foreground);
-  background: radial-gradient(circle at top left, rgba(255, 45, 45, 0.12), transparent 18%),
-    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.05), transparent 18%),
-    linear-gradient(180deg, #050507 0%, #09090f 48%, #050507 100%);
+  background: radial-gradient(circle at top left, rgba(255, 45, 45, 0.16), transparent 25%),
+    radial-gradient(circle at top right, rgba(220, 38, 38, 0.08), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.04), transparent 20%),
+    linear-gradient(180deg, #050507 0%, #08080f 48%, #040406 100%);
   background-attachment: fixed;
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
 body ::selection {
-  background: rgba(255, 45, 45, 0.22);
+  background: rgba(255, 45, 45, 0.35);
   color: #fff;
 }
 
@@ -50,13 +53,51 @@ body ::selection {
   padding-bottom: 5rem;
 }
 
+/* Enhanced Glassmorphism & Brand Elements */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.35);
+  background: rgba(15, 15, 22, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   border-radius: 1.5rem;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+.glass-card {
+  background: rgba(18, 18, 25, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  border-radius: 1.25rem;
+}
+
+.glass-button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.2s ease;
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 45, 45, 0.4);
+  box-shadow: 0 0 20px rgba(255, 45, 45, 0.2);
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, #ff4d4d 0%, #dc2626 50%, #991b1b 100%);
+}
+
+.brand-glow {
+  box-shadow: 0 0 35px rgba(220, 38, 38, 0.35);
+}
+
+.brand-text-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, #fca5a5 60%, #ef4444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 input[type="date"],

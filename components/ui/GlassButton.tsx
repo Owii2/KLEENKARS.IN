@@ -1,11 +1,12 @@
-import React from 'react';
+import React from "react";
 
-// A reusable glass‑morphism button used across the admin UI
-export const GlassButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ children, className = '', ...props }) => {
+// Reusable glassmorphism button used across the UI
+export const GlassButton: React.FC<
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+> = ({ children, className = "", ...props }) => {
   return (
     <button
-      className={`bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl px-4 py-2 text-white hover:bg-white/20 transition ${className}`}
-      style={{ background: 'rgba(255,255,255,0.1)' }}
+      className={`bg-white/5 hover:bg-red-600/20 active:scale-95 backdrop-blur-xl border border-white/10 hover:border-red-500/40 rounded-xl px-4 py-2 text-white font-medium transition-all duration-200 shadow-md ${className}`}
       {...props}
     >
       {children}
