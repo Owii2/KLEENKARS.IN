@@ -16,7 +16,7 @@ export default function Navbar() {
     setCustomer(stored ? JSON.parse(stored) : null);
   }, []);
 
-  if (pathname?.startsWith("/admin")) {
+  if (pathname?.startsWith("/admin") || pathname === "/connect") {
     return null;
   }
 
