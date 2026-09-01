@@ -104,9 +104,13 @@ input[type="date"],
 input[type="time"] {
   color-scheme: dark;
   color: white;
+  cursor: pointer;
 }
 
-.calendar-picker::-webkit-calendar-picker-indicator {
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   cursor: pointer;
+  opacity: 0.9;
+  padding: 4px;
 }

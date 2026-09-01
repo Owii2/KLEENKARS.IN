@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   calculateDiscount,
   getIncludedAddonIds,
@@ -63,6 +63,8 @@ export default function BookingPage() {
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [optionsError, setOptionsError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const timeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -736,14 +738,28 @@ export default function BookingPage() {
                 })()}
               </div>
 
-              <div className="relative">
+              <div
+                onClick={() => {
+                  try {
+                    dateInputRef.current?.showPicker?.();
+                    dateInputRef.current?.focus();
+                  } catch (err) {}
+                }}
+                className="relative cursor-pointer group"
+              >
                 <input
+                  ref={dateInputRef}
                   type="date"
                   required
                   value={bookingDate}
+                  onClick={(e) => {
+                    try {
+                      (e.currentTarget as any).showPicker?.();
+                    } catch (err) {}
+                  }}
                   onChange={(e) => setBookingDate(e.target.value)}
                   min={new Date().toISOString().split("T")[0]}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 cursor-pointer"
+                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 group-hover:border-zinc-500 cursor-pointer transition"
                 />
               </div>
             </div>
@@ -781,13 +797,27 @@ export default function BookingPage() {
                 })}
               </div>
 
-              <div className="relative">
+              <div
+                onClick={() => {
+                  try {
+                    timeInputRef.current?.showPicker?.();
+                    timeInputRef.current?.focus();
+                  } catch (err) {}
+                }}
+                className="relative cursor-pointer group"
+              >
                 <input
+                  ref={timeInputRef}
                   type="time"
                   required
                   value={bookingTime}
+                  onClick={(e) => {
+                    try {
+                      (e.currentTarget as any).showPicker?.();
+                    } catch (err) {}
+                  }}
                   onChange={(e) => setBookingTime(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 cursor-pointer"
+                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 group-hover:border-zinc-500 cursor-pointer transition"
                 />
               </div>
             </div>
