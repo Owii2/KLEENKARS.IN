@@ -205,7 +205,7 @@ export default function ConnectPage() {
           {/* Verification & Trust Chips */}
           <div className="flex flex-wrap items-center justify-center gap-2 mt-3.5">
             <a
-              href="https://search.google.com/local/writereview?placeid=ChIJywrV6LzBvzkRxD3-Kk8eXy4"
+              href="https://g.page/r/CQrNSufUtSHLEAE/review"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold px-3 py-1 rounded-full hover:bg-amber-500/20 transition"
@@ -257,7 +257,7 @@ export default function ConnectPage() {
           </a>
 
           <a
-            href="https://search.google.com/local/writereview?placeid=ChIJywrV6LzBvzkRxD3-Kk8eXy4"
+            href="https://g.page/r/CQrNSufUtSHLEAE/review"
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center bg-[#0d0d0d] hover:bg-zinc-900 border border-zinc-800 hover:border-amber-500/50 p-2.5 rounded-2xl transition active:scale-95 text-center group"
