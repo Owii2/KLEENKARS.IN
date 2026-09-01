@@ -345,12 +345,34 @@ export default function BookingPage() {
     }
 
     if (!bookingDate) {
-      alert("Select booking date");
+      alert("Please select a booking date");
+      return;
+    }
+
+    const todayObj = new Date();
+    const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
+
+    if (bookingDate < todayStr) {
+      alert("❌ Past dates are not allowed. Please choose today or a future date.");
       return;
     }
 
     if (!bookingTime) {
-      alert("Select booking time");
+      alert("Please select an appointment time slot");
+      return;
+    }
+
+    if (bookingTime < "10:00" || bookingTime > "20:00") {
+      alert("❌ Kleenkars is open from 10:00 AM to 08:00 PM. Please select a time slot within working hours.");
+      return;
+    }
+
+    const currentHours = String(todayObj.getHours()).padStart(2, "0");
+    const currentMins = String(todayObj.getMinutes()).padStart(2, "0");
+    const currentTimeStr = `${currentHours}:${currentMins}`;
+
+    if (bookingDate === todayStr && bookingTime <= currentTimeStr) {
+      alert("❌ This time slot has already passed for today. Please select an upcoming time slot or a future date.");
       return;
     }
 
@@ -683,7 +705,7 @@ export default function BookingPage() {
                 <span>📅</span> Appointment Schedule
               </span>
               <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                Open 7 Days • 10 AM - 10 PM
+                Open 7 Days • 10 AM - 8 PM
               </span>
             </div>
 
@@ -707,7 +729,8 @@ export default function BookingPage() {
                   const dayAfter = new Date(today);
                   dayAfter.setDate(today.getDate() + 2);
 
-                  const formatDateStr = (d: Date) => d.toISOString().split("T")[0];
+                  const formatDateStr = (d: Date) =>
+                    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
                   const quickDates = [
                     { label: "Today", dateStr: formatDateStr(today) },
@@ -758,7 +781,10 @@ export default function BookingPage() {
                     } catch (err) {}
                   }}
                   onChange={(e) => setBookingDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
+                  min={(() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                  })()}
                   className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 group-hover:border-zinc-500 cursor-pointer transition"
                 />
               </div>
@@ -766,35 +792,64 @@ export default function BookingPage() {
 
             {/* TIME SELECTOR */}
             <div className="space-y-2 pt-2 border-t border-zinc-800/60">
-              <label className="text-xs font-bold text-gray-300 flex items-center justify-between">
-                <span>Select Preferred Time Slot *</span>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-300">
+                  Select Arrival / Slot Time (10:00 AM – 08:00 PM) *
+                </label>
                 {bookingTime && (
                   <span className="text-[11px] font-mono text-red-400 font-bold">
                     {bookingTime}
                   </span>
                 )}
-              </label>
+              </div>
 
-              {/* Quick Time Slots */}
+              {/* Quick Time Slots between 10:00 AM and 08:00 PM */}
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {["10:00", "12:00", "14:00", "16:00", "18:00", "20:00"].map((timeSlot) => {
-                  const label = `${timeSlot === "12:00" ? "12:00 PM" : Number(timeSlot.split(":")[0]) < 12 ? `${timeSlot} AM` : `${Number(timeSlot.split(":")[0]) - 12 || 12}:00 PM`}`;
-                  const isSelected = bookingTime === timeSlot;
-                  return (
-                    <button
-                      key={timeSlot}
-                      type="button"
-                      onClick={() => setBookingTime(timeSlot)}
-                      className={`text-xs font-bold py-2 rounded-xl border text-center transition cursor-pointer ${
-                        isSelected
-                          ? "bg-red-600 text-white border-red-500 shadow-md shadow-red-950/40"
-                          : "bg-black/60 text-gray-400 border-zinc-800 hover:text-white hover:border-zinc-700"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
+                {(() => {
+                  const now = new Date();
+                  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                  const currentHours = String(now.getHours()).padStart(2, "0");
+                  const currentMins = String(now.getMinutes()).padStart(2, "0");
+                  const currentTimeStr = `${currentHours}:${currentMins}`;
+                  const isTodaySelected = bookingDate === todayStr;
+
+                  const slots = [
+                    { time: "10:00", label: "10:00 AM" },
+                    { time: "11:00", label: "11:00 AM" },
+                    { time: "12:00", label: "12:00 PM" },
+                    { time: "13:00", label: "01:00 PM" },
+                    { time: "14:00", label: "02:00 PM" },
+                    { time: "15:00", label: "03:00 PM" },
+                    { time: "16:00", label: "04:00 PM" },
+                    { time: "17:00", label: "05:00 PM" },
+                    { time: "18:00", label: "06:00 PM" },
+                    { time: "19:00", label: "07:00 PM" },
+                    { time: "20:00", label: "08:00 PM" },
+                  ];
+
+                  return slots.map((s) => {
+                    const isPast = isTodaySelected && s.time <= currentTimeStr;
+                    const isSelected = bookingTime === s.time;
+
+                    return (
+                      <button
+                        key={s.time}
+                        type="button"
+                        disabled={isPast}
+                        onClick={() => setBookingTime(s.time)}
+                        className={`text-xs font-bold py-2 rounded-xl border text-center transition ${
+                          isPast
+                            ? "bg-zinc-950/50 text-zinc-600 border-zinc-850 cursor-not-allowed line-through opacity-40"
+                            : isSelected
+                            ? "bg-red-600 text-white border-red-500 shadow-md shadow-red-950/40 cursor-pointer"
+                            : "bg-black/60 text-gray-300 border-zinc-800 hover:text-white hover:border-zinc-700 cursor-pointer"
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
 
               <div
@@ -810,6 +865,8 @@ export default function BookingPage() {
                   ref={timeInputRef}
                   type="time"
                   required
+                  min="10:00"
+                  max="20:00"
                   value={bookingTime}
                   onClick={(e) => {
                     try {
@@ -820,6 +877,9 @@ export default function BookingPage() {
                   className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 group-hover:border-zinc-500 cursor-pointer transition"
                 />
               </div>
+              <p className="text-[11px] text-gray-400">
+                ⚡ Studio Working Hours: <strong className="text-gray-200">10:00 AM – 08:00 PM</strong>. Off-hours and past time slots are automatically blocked.
+              </p>
             </div>
           </div>
 

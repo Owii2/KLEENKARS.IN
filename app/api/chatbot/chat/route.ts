@@ -391,7 +391,7 @@ To apply a discount, enter the coupon code when scheduling on the **[Booking Pag
     return `🕒 **Kleenkars Working Hours**
 
 We are open daily:
-* 📅 **Everyday:** 10:00 AM – 10:00 PM
+* 📅 **Everyday:** 10:00 AM – 08:00 PM
 
 Would you like help booking a wash slot today? You can book directly on our **[Booking Page](/booking)**! 📅`;
   }

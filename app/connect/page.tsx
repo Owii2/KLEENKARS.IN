@@ -215,7 +215,7 @@ export default function ConnectPage() {
             </a>
             <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-mono px-3 py-1 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Studio Open Today (10 AM - 10 PM)</span>
+              <span>Studio Open Today (10 AM - 8 PM)</span>
             </div>
           </div>
         </div>
@@ -349,7 +349,7 @@ export default function ConnectPage() {
               </div>
               <div className="text-[10px] text-gray-500 flex items-center gap-1 font-mono pt-0.5">
                 <Clock className="w-3 h-3 text-red-400" />
-                <span>Mon – Sun: 10:00 AM – 10:00 PM</span>
+                <span>Mon – Sun: 10:00 AM – 08:00 PM</span>
               </div>
             </div>
           </div>
