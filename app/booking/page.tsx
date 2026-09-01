@@ -659,30 +659,139 @@ export default function BookingPage() {
             )}
           </div>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Got a Promo Code? Enter it here"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700 uppercase"
-            />
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Discount Promo Code
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Got a Promo Code? Enter it here (e.g. SAVE10)"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700 uppercase placeholder-zinc-500 focus:outline-none focus:border-red-500 text-sm"
+              />
+            </div>
           </div>
 
-          <input
-            type="date"
-            value={bookingDate}
-            onChange={(e) => setBookingDate(e.target.value)}
-            min={new Date().toISOString().split("T")[0]}
-            className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
-          />
+          {/* APPOINTMENT SCHEDULE CARD */}
+          <div className="bg-zinc-900 border border-zinc-700/80 rounded-2xl p-5 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <span className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                <span>📅</span> Appointment Schedule
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                Open 7 Days • 10 AM - 10 PM
+              </span>
+            </div>
 
-          <input
-            type="time"
-            value={bookingTime}
-            onChange={(e) => setBookingTime(e.target.value)}
-            className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
-          />
+            {/* DATE SELECTOR */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-300 flex items-center justify-between">
+                <span>Select Service Date *</span>
+                {bookingDate && (
+                  <span className="text-[11px] font-mono text-red-400 font-bold">
+                    {new Date(bookingDate).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                )}
+              </label>
+
+              {/* Quick Date Pills */}
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {(() => {
+                  const today = new Date();
+                  const tomorrow = new Date(today);
+                  tomorrow.setDate(today.getDate() + 1);
+                  const dayAfter = new Date(today);
+                  dayAfter.setDate(today.getDate() + 2);
+
+                  const formatDateStr = (d: Date) => d.toISOString().split("T")[0];
+
+                  const quickDates = [
+                    { label: "Today", dateStr: formatDateStr(today) },
+                    { label: "Tomorrow", dateStr: formatDateStr(tomorrow) },
+                    {
+                      label: dayAfter.toLocaleDateString("en-IN", { weekday: "short", day: "numeric" }),
+                      dateStr: formatDateStr(dayAfter),
+                    },
+                  ];
+
+                  return quickDates.map((q) => {
+                    const isSelected = bookingDate === q.dateStr;
+                    return (
+                      <button
+                        key={q.dateStr}
+                        type="button"
+                        onClick={() => setBookingDate(q.dateStr)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? "bg-red-600 text-white border-red-500 shadow-md shadow-red-950/40"
+                            : "bg-black/60 text-gray-400 border-zinc-800 hover:text-white hover:border-zinc-700"
+                        }`}
+                      >
+                        {q.label}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              <div className="relative">
+                <input
+                  type="date"
+                  required
+                  value={bookingDate}
+                  onChange={(e) => setBookingDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* TIME SELECTOR */}
+            <div className="space-y-2 pt-2 border-t border-zinc-800/60">
+              <label className="text-xs font-bold text-gray-300 flex items-center justify-between">
+                <span>Select Preferred Time Slot *</span>
+                {bookingTime && (
+                  <span className="text-[11px] font-mono text-red-400 font-bold">
+                    {bookingTime}
+                  </span>
+                )}
+              </label>
+
+              {/* Quick Time Slots */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {["10:00", "12:00", "14:00", "16:00", "18:00", "20:00"].map((timeSlot) => {
+                  const label = `${timeSlot === "12:00" ? "12:00 PM" : Number(timeSlot.split(":")[0]) < 12 ? `${timeSlot} AM` : `${Number(timeSlot.split(":")[0]) - 12 || 12}:00 PM`}`;
+                  const isSelected = bookingTime === timeSlot;
+                  return (
+                    <button
+                      key={timeSlot}
+                      type="button"
+                      onClick={() => setBookingTime(timeSlot)}
+                      className={`text-xs font-bold py-2 rounded-xl border text-center transition cursor-pointer ${
+                        isSelected
+                          ? "bg-red-600 text-white border-red-500 shadow-md shadow-red-950/40"
+                          : "bg-black/60 text-gray-400 border-zinc-800 hover:text-white hover:border-zinc-700"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="relative">
+                <input
+                  type="time"
+                  required
+                  value={bookingTime}
+                  onChange={(e) => setBookingTime(e.target.value)}
+                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-700 text-white text-sm font-semibold focus:outline-none focus:border-red-500 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="bg-red-500 p-6 rounded-xl space-y-2">
             <div className="flex justify-between text-lg">
