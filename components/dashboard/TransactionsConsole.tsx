@@ -56,12 +56,8 @@ const VEHICLE_OPTIONS = [
   { value: "Sedan", label: "Sedan" },
   { value: "SUV", label: "SUV" },
   { value: "MUV", label: "MUV" },
-  { value: "Truck", label: "Truck" },
-  { value: "Van", label: "Van" },
-  { value: "Traveller", label: "Traveller" },
-  { value: "Bus", label: "Bus" },
-  { value: "E-Rickshaw", label: "E-Rickshaw" },
-  { value: "Tractor", label: "Tractor" },
+  { value: "Luxury", label: "Luxury" },
+  { value: "Commercial Vehicle", label: "Commercial Vehicle (Truck/Van/Fleet)" },
   { value: "Others", label: "Others" }
 ];
 

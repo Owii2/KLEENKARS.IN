@@ -507,17 +507,13 @@ export default function BookingPage() {
                 className="w-full p-4 rounded-xl bg-zinc-900 border border-zinc-700"
               >
                 <option value="">Select Vehicle Type</option>
-                <option value="bike">Bike</option>
-                <option value="hatchback">Hatchback</option>
-                <option value="sedan">Sedan</option>
-                <option value="suv">SUV</option>
-                <option value="muv">MUV</option>
-                <option value="truck">Truck</option>
-                <option value="van">Van</option>
-                <option value="traveller">Traveller</option>
-                <option value="bus">Bus</option>
-                <option value="e-rickshaw">E-Rickshaw</option>
-                <option value="tractor">Tractor</option>
+                <option value="bike">Bike (Two-Wheeler)</option>
+                <option value="hatchback">Hatchback (Swift, i20, Baleno, Tiago)</option>
+                <option value="sedan">Sedan (City, Verna, Ciaz, Slavia, Dzire)</option>
+                <option value="suv">SUV (Creta, Seltos, Thar, Scorpio, Nexon)</option>
+                <option value="muv">MUV (Innova, Ertiga, Carens)</option>
+                <option value="luxury">Luxury (BMW, Audi, Mercedes, Jaguar)</option>
+                <option value="commercial">Commercial Vehicle (Trucks, Pickups, Vans, Travellers, E-Rickshaws & Fleet - Custom Pricing)</option>
                 <option value="others">Others</option>
               </select>
 

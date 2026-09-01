@@ -2123,12 +2123,8 @@ export default function ManagerPage() {
                     <option value="Sedan">Sedan</option>
                     <option value="SUV">SUV</option>
                     <option value="MUV">MUV</option>
-                    <option value="Truck">Truck</option>
-                    <option value="Van">Van</option>
-                    <option value="Traveller">Traveller</option>
-                    <option value="Bus">Bus</option>
-                    <option value="E-Rickshaw">E-Rickshaw</option>
-                    <option value="Tractor">Tractor</option>
+                    <option value="Luxury">Luxury</option>
+                    <option value="Commercial Vehicle">Commercial Vehicle</option>
                     <option value="Others">Others</option>
                   </select>
                 </div>

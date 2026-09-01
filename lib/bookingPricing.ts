@@ -1,4 +1,4 @@
-export type VehicleType = "bike" | "hatchback" | "sedan" | "suv" | "muv" | "truck" | "van" | "traveller" | "bus" | "e-rickshaw" | "tractor" | "others";
+export type VehicleType = "bike" | "hatchback" | "sedan" | "suv" | "muv" | "luxury" | "commercial" | "others";
 
 export interface PricingService {
   id: string;
@@ -42,6 +42,7 @@ export const includedAddonNamesByServiceName: Record<string, string[]> = {
   "Paint Correction": ["body wax"],
   "Ceramic Coating": ["vacuum", "dashboard polish", "tyre shine", "body wax", "perfume", "perfume sticker", "hanging perfume"],
   "PPF Protection": ["vacuum", "dashboard polish", "tyre shine", "body wax", "perfume", "perfume sticker", "hanging perfume"],
+  "Commercial Fleet Detailing": ["vacuum", "dashboard polish", "tyre shine", "perfume"],
 };
 
 export const vehicleSuffixMap: Record<string, VehicleType[]> = {
@@ -53,12 +54,9 @@ export const vehicleSuffixMap: Record<string, VehicleType[]> = {
   SUV: ["suv"],
   MUV: ["muv"],
   "SUV/MUV": ["suv", "muv"],
-  Truck: ["truck"],
-  Van: ["van"],
-  Traveller: ["traveller"],
-  Bus: ["bus"],
-  "E-Rickshaw": ["e-rickshaw"],
-  Tractor: ["tractor"],
+  Luxury: ["luxury"],
+  "Commercial Vehicle": ["commercial"],
+  Commercial: ["commercial"],
   Others: ["others"]
 };
 

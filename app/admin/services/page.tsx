@@ -15,20 +15,14 @@ interface Service {
 
 const BASE_VEHICLE_OPTIONS = [
   { value: "All", label: "All Vehicles (No Suffix)" },
-  { value: "Bike", label: "Bike" },
   { value: "Hatchback", label: "Hatchback" },
   { value: "Sedan", label: "Sedan" },
   { value: "SUV", label: "SUV" },
   { value: "MUV", label: "MUV" },
   { value: "SUV/MUV", label: "SUV/MUV (Combined)" },
   { value: "Luxury", label: "Luxury / Exotic" },
-  { value: "Truck/Traveller", label: "Truck / Traveller" },
-  { value: "Truck", label: "Truck" },
-  { value: "Van", label: "Van" },
-  { value: "Traveller", label: "Traveller" },
-  { value: "Bus", label: "Bus" },
-  { value: "E-Rickshaw", label: "E-Rickshaw" },
-  { value: "Tractor", label: "Tractor" },
+  { value: "Bike", label: "Bike (Two-Wheeler)" },
+  { value: "Commercial Vehicle", label: "Commercial Vehicle (Truck/Van/Fleet - Custom Pricing)" },
   { value: "Others", label: "Others" }
 ];
 
