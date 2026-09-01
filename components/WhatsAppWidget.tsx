@@ -1,14 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function WhatsAppWidget() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const phoneNumber = "918650007661";
   const defaultMessage = encodeURIComponent(
     "Hi Kleenkars! I would like to inquire about car detailing / wash services in Aligarh. Please share details and slot availability."
   );
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${defaultMessage}`;
+
+  // Hide on connect QR landing hub and admin console
+  if (
+    pathname === "/connect" ||
+    pathname?.startsWith("/connect/") ||
+    pathname === "/hub" ||
+    pathname === "/links" ||
+    pathname === "/qr" ||
+    pathname?.startsWith("/admin")
+  ) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-3 pointer-events-auto">

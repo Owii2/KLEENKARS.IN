@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function CookieConsent() {
+  const pathname = usePathname();
   const [showConsent, setShowConsent] = useState(false);
 
   useEffect(() => {
@@ -15,14 +17,25 @@ export default function CookieConsent() {
     }
   }, []);
 
+  // Do not show cookie popup on QR landing hub or admin pages
+  if (
+    !showConsent ||
+    pathname === "/connect" ||
+    pathname?.startsWith("/connect/") ||
+    pathname === "/hub" ||
+    pathname === "/links" ||
+    pathname === "/qr" ||
+    pathname?.startsWith("/admin")
+  ) {
+    return null;
+  }
+
   const handleAccept = () => {
     if (typeof window !== "undefined") {
       localStorage.setItem("kleenkars_cookie_consent", "accepted");
     }
     setShowConsent(false);
   };
-
-  if (!showConsent) return null;
 
   return (
     <div
