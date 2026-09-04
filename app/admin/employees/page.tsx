@@ -70,6 +70,27 @@ export default function EmployeePage() {
   const [savingDrawer, setSavingDrawer] = useState(false);
   const [deletingEmployee, setDeletingEmployee] = useState(false);
   const [showRoleGuidelines, setShowRoleGuidelines] = useState(false);
+  const [syncingSheet, setSyncingSheet] = useState(false);
+
+  const handleSyncFromGoogleSheet = async () => {
+    if (!confirm("Do you want to sync all employee records from the Staff_Master Google Sheet?")) return;
+    try {
+      setSyncingSheet(true);
+      const res = await fetch("/api/employees/google-sheet", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(data.message || "Employees successfully synced from Staff_Master!");
+        fetchEmployees();
+      } else {
+        alert(data.message || "Failed to sync from Google Sheet.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error syncing from Google Sheet.");
+    } finally {
+      setSyncingSheet(false);
+    }
+  };
 
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return;
@@ -321,23 +342,41 @@ export default function EmployeePage() {
             Monitor check-ins, manage compensations, review feedback, and configure credentials.
           </p>
         </div>
-        <button
-          onClick={() => {
-            setShowCreateForm(true);
-            setEmployeeCode(generateEmployeeCode());
-          }}
-          className="bg-red-600 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 text-white font-semibold px-5 py-3 rounded-lg flex items-center gap-2 self-start md:self-auto shadow-lg shadow-red-900/30"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <button
+            onClick={handleSyncFromGoogleSheet}
+            disabled={syncingSheet}
+            className="bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white font-semibold px-4 py-3 rounded-lg flex items-center gap-2 border border-white/10 transition shadow cursor-pointer text-sm"
+            title="Sync latest records from Staff_Master Google Sheet"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Employee
-        </button>
+            <svg
+              className={`w-4 h-4 text-emerald-400 ${syncingSheet ? "animate-spin" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {syncingSheet ? "Syncing..." : "Sync Staff_Master"}
+          </button>
+          <button
+            onClick={() => {
+              setShowCreateForm(true);
+              setEmployeeCode(generateEmployeeCode());
+            }}
+            className="bg-red-600 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 text-white font-semibold px-5 py-3 rounded-lg flex items-center gap-2 shadow-lg shadow-red-900/30 cursor-pointer text-sm"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Employee
+          </button>
+        </div>
       </div>
 
       {/* Analytics Counter Grid */}
