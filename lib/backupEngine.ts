@@ -25,6 +25,12 @@ export interface MonthlyBackupResult {
   summary: {
     totalSales: number;
     salesCount: number;
+    directExpenses: number;
+    directExpensesCount: number;
+    paidPayrollExpenses: number;
+    paidPayrollCount: number;
+    totalPayrollNet: number;
+    payrollCount: number;
     totalExpenses: number;
     expensesCount: number;
     totalBookingsCost: number;
@@ -197,7 +203,7 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
     ...attendanceRows.map((r) => r.map(escapeCsvCell).join(",")),
   ].join("\r\n");
 
-  // 4. EXPENSES
+  // 4. DIRECT OPERATIONAL EXPENSES
   let expenseWhere: any = {};
   if (targetMonth) {
     const [yearStr, monthNumStr] = targetMonth.split("-");
@@ -252,7 +258,52 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
     ...expenseRows.map((r) => r.map(escapeCsvCell).join(",")),
   ].join("\r\n");
 
-  // 5. DAILY CLOSING
+  // 5. STAFF PAYROLL & SALARIES
+  const payrollWhere: any = {};
+  if (targetMonth) {
+    payrollWhere.month = targetMonth;
+  }
+  const payrollList = await prisma.payroll.findMany({
+    where: payrollWhere,
+    orderBy: [{ month: "desc" }, { employeeName: "asc" }],
+  });
+
+  const payrollHeaders = [
+    "Payroll ID",
+    "Month",
+    "Employee Code",
+    "Employee Name",
+    "Working Days",
+    "Daily Wage",
+    "Advances",
+    "Deductions",
+    "Net Payable",
+    "Status",
+    "Paid Date",
+    "Created At",
+  ];
+
+  const payrollRows = payrollList.map((p) => [
+    p.id,
+    p.month,
+    p.employeeCode,
+    p.employeeName,
+    p.workingDays,
+    p.dailyWage,
+    p.advances,
+    p.deductions,
+    p.netPayable,
+    p.status,
+    p.paidAt ? p.paidAt.toISOString().split("T")[0] : "",
+    p.createdAt.toISOString(),
+  ]);
+
+  const payrollCsv = [
+    payrollHeaders.map(escapeCsvCell).join(","),
+    ...payrollRows.map((r) => r.map(escapeCsvCell).join(",")),
+  ].join("\r\n");
+
+  // 6. DAILY CLOSING
   const closingWhere: any = {};
   if (targetMonth) {
     closingWhere.date = { startsWith: targetMonth };
@@ -289,7 +340,7 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
     ...closingRows.map((r) => r.map(escapeCsvCell).join(",")),
   ].join("\r\n");
 
-  // 6. EMPLOYEES MASTER
+  // 7. EMPLOYEES MASTER
   const employees = await prisma.employee.findMany({
     orderBy: { name: "asc" },
   });
@@ -322,7 +373,7 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
     ...employeeRows.map((r) => r.map(escapeCsvCell).join(",")),
   ].join("\r\n");
 
-  // 7. CUSTOMERS MASTER
+  // 8. CUSTOMERS MASTER
   const customers = await prisma.customer.findMany({
     orderBy: { createdAt: "desc" },
   });
@@ -380,6 +431,12 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
       csvContent: expensesCsv,
     },
     {
+      filename: `Payroll_${monthLabel}.csv`,
+      category: "Staff Payroll & Wages",
+      recordCount: payrollList.length,
+      csvContent: payrollCsv,
+    },
+    {
       filename: `Daily_Closing_${monthLabel}.csv`,
       category: "Daily Closing Records",
       recordCount: dailyClosings.length,
@@ -401,7 +458,14 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
 
   // Calculate summary statistics
   const totalSales = transactions.reduce((sum, t) => sum + (t.finalAmount ?? t.amount ?? 0), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const directExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const paidPayrollList = payrollList.filter((p) => p.status?.toLowerCase() === "paid");
+  const paidPayrollExpenses = paidPayrollList.reduce((sum, p) => sum + (p.netPayable || 0), 0);
+  const totalPayrollNet = payrollList.reduce((sum, p) => sum + (p.netPayable || 0), 0);
+  
+  // Realized or committed payroll outflow
+  const payrollExpenseToInclude = paidPayrollExpenses > 0 ? paidPayrollExpenses : totalPayrollNet;
+  const totalExpenses = directExpenses + payrollExpenseToInclude;
   const totalBookingsCost = bookings.reduce((sum, b) => sum + (b.finalAmount ?? b.totalCost ?? 0), 0);
   const netProfit = totalSales - totalExpenses;
 
@@ -412,8 +476,14 @@ export async function generateMonthlyCsvBackups(monthStr?: string): Promise<Mont
     summary: {
       totalSales,
       salesCount: transactions.length,
+      directExpenses,
+      directExpensesCount: expenses.length,
+      paidPayrollExpenses,
+      paidPayrollCount: paidPayrollList.length,
+      totalPayrollNet,
+      payrollCount: payrollList.length,
       totalExpenses,
-      expensesCount: expenses.length,
+      expensesCount: expenses.length + payrollList.length,
       totalBookingsCost,
       bookingsCount: bookings.length,
       attendanceCount: attendanceList.length,
@@ -462,19 +532,27 @@ export async function sendMonthlyBackupEmail(options?: {
 
       <p style="color: #d4d4d8; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
         Hello, here is your complete monthly data backup package for <strong>${backupData.monthLabel}</strong>. 
-        All datasets have been packaged into separate CSV files attached to this email.
+        All datasets (Sales, Direct Expenses, Staff Payroll, Attendance, Bookings, Daily Closings, and Masters) have been packaged into separate CSV files attached to this email.
       </p>
 
       <div style="background-color: #12121a; padding: 18px; border-radius: 12px; border: 1px solid #27272a; margin-bottom: 24px;">
-        <h3 style="color: #10b981; margin: 0 0 12px 0; font-size: 16px;">📈 Monthly Summary (${backupData.monthLabel})</h3>
+        <h3 style="color: #10b981; margin: 0 0 12px 0; font-size: 16px;">📈 Monthly Financial Summary (${backupData.monthLabel})</h3>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
           <tr>
             <td style="padding: 6px 0; color: #a1a1aa;">Total Sales Revenue:</td>
             <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #10b981;">₹${backupData.summary.totalSales.toLocaleString("en-IN")} (${backupData.summary.salesCount} txns)</td>
           </tr>
           <tr>
-            <td style="padding: 6px 0; color: #a1a1aa;">Total Expenses:</td>
-            <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #ef4444;">₹${backupData.summary.totalExpenses.toLocaleString("en-IN")} (${backupData.summary.expensesCount} bills)</td>
+            <td style="padding: 6px 0; color: #a1a1aa;">Direct Store Expenses:</td>
+            <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #ef4444;">₹${backupData.summary.directExpenses.toLocaleString("en-IN")} (${backupData.summary.directExpensesCount} bills)</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #a1a1aa;">Staff Payroll (Salaries &amp; Wages):</td>
+            <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #f59e0b;">₹${backupData.summary.totalPayrollNet.toLocaleString("en-IN")} (${backupData.summary.payrollCount} staff)</td>
+          </tr>
+          <tr style="border-top: 1px dashed #3f3f46;">
+            <td style="padding: 6px 0; color: #d4d4d8; font-weight: 600;">Total Outflow / Expenses:</td>
+            <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #ef4444;">₹${backupData.summary.totalExpenses.toLocaleString("en-IN")}</td>
           </tr>
           <tr style="border-top: 1px solid #27272a;">
             <td style="padding: 8px 0; font-weight: bold; color: #ffffff;">Estimated Net Profit:</td>

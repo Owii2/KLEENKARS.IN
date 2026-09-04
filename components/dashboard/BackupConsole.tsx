@@ -196,44 +196,56 @@ export default function BackupConsole() {
                 </h3>
               </div>
 
-              <div className="space-y-3 pt-3 text-xs">
+              <div className="space-y-2.5 pt-3 text-xs">
                 <div className="flex justify-between py-1.5 border-b border-white/5">
                   <span className="text-gray-400">Total Sales Revenue:</span>
                   <span className="text-emerald-400 font-bold">
-                    ₹{previewData.summary.totalSales.toLocaleString("en-IN")} ({previewData.summary.salesCount} txns)
+                    ₹{(previewData.summary.totalSales || 0).toLocaleString("en-IN")} ({previewData.summary.salesCount || 0} txns)
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-white/5">
-                  <span className="text-gray-400">Total Expenses:</span>
+                  <span className="text-gray-400">Direct Store Expenses:</span>
+                  <span className="text-red-400 font-semibold">
+                    ₹{(previewData.summary.directExpenses !== undefined ? previewData.summary.directExpenses : previewData.summary.totalExpenses || 0).toLocaleString("en-IN")} ({previewData.summary.directExpensesCount || previewData.summary.expensesCount || 0} bills)
+                  </span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-white/5">
+                  <span className="text-gray-400">Staff Payroll (Wages):</span>
+                  <span className="text-amber-400 font-semibold">
+                    ₹{(previewData.summary.totalPayrollNet || 0).toLocaleString("en-IN")} ({previewData.summary.payrollCount || 0} staff)
+                  </span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-white/5 bg-white/[0.02] px-2 rounded-lg -mx-2">
+                  <span className="text-gray-300 font-medium">Total Expenses:</span>
                   <span className="text-red-400 font-bold">
-                    ₹{previewData.summary.totalExpenses.toLocaleString("en-IN")} ({previewData.summary.expensesCount} bills)
+                    ₹{(previewData.summary.totalExpenses || 0).toLocaleString("en-IN")}
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-white/5">
                   <span className="text-gray-400">Estimated Net Profit:</span>
                   <span
                     className={`font-black text-sm ${
-                      previewData.summary.netProfit >= 0 ? "text-emerald-400" : "text-red-400"
+                      (previewData.summary.netProfit || 0) >= 0 ? "text-emerald-400" : "text-red-400"
                     }`}
                   >
-                    ₹{previewData.summary.netProfit.toLocaleString("en-IN")}
+                    ₹{(previewData.summary.netProfit || 0).toLocaleString("en-IN")}
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-white/5">
                   <span className="text-gray-400">Bookings Logged:</span>
                   <span className="text-white font-medium">
-                    {previewData.summary.bookingsCount} (₹{previewData.summary.totalBookingsCost.toLocaleString("en-IN")})
+                    {previewData.summary.bookingsCount || 0} (₹{(previewData.summary.totalBookingsCost || 0).toLocaleString("en-IN")})
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5">
                   <span className="text-gray-400">Attendance Records:</span>
-                  <span className="text-white font-medium">{previewData.summary.attendanceCount} check-ins</span>
+                  <span className="text-white font-medium">{previewData.summary.attendanceCount || 0} check-ins</span>
                 </div>
               </div>
             </div>
 
             <div className="p-3 bg-red-950/20 border border-red-500/20 rounded-2xl text-[11px] text-red-300/80 leading-relaxed mt-4">
-              💡 All {previewData.files?.length || 7} files are generated as clean CSV datasets formatted with UTF-8 encoding.
+              💡 All {previewData.files?.length || 8} datasets (including Staff Payroll) are generated as clean CSV files formatted with UTF-8 encoding.
             </div>
           </div>
 
