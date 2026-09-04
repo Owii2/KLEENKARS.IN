@@ -18,10 +18,16 @@ export async function GET(req: Request) {
     const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
 
     if (type === "monthly") {
-      const expenses = await prisma.expense.findMany({
-        where: { date: { gte: startDate, lte: endDate } },
-        select: { date: true, amount: true },
-      });
+      const [expenses, payrolls] = await Promise.all([
+        prisma.expense.findMany({
+          where: { date: { gte: startDate, lte: endDate } },
+          select: { date: true, amount: true },
+        }),
+        prisma.payroll.findMany({
+          where: { month: { startsWith: String(year) } },
+          select: { month: true, netPayable: true },
+        }),
+      ]);
 
       // Group by month
       const monthlyData = Array.from({ length: 12 }, (_, i) => ({
@@ -34,20 +40,51 @@ export async function GET(req: Request) {
         monthlyData[m].amount += e.amount;
       });
 
+      payrolls.forEach((p) => {
+        const parts = p.month.split("-");
+        if (parts.length === 2) {
+          const m = parseInt(parts[1], 10) - 1;
+          if (m >= 0 && m < 12) {
+            monthlyData[m].amount += p.netPayable || 0;
+          }
+        }
+      });
+
       return NextResponse.json({ success: true, report: monthlyData });
     }
 
     if (type === "category") {
-      const categoryGroup = await prisma.expense.groupBy({
-        by: ["category"],
-        where: { date: { gte: startDate, lte: endDate } },
-        _sum: { amount: true },
-      });
+      const [categoryGroup, payrolls] = await Promise.all([
+        prisma.expense.groupBy({
+          by: ["category"],
+          where: { date: { gte: startDate, lte: endDate } },
+          _sum: { amount: true },
+        }),
+        prisma.payroll.aggregate({
+          where: { month: { startsWith: String(year) } },
+          _sum: { netPayable: true },
+        }),
+      ]);
 
       const report = categoryGroup.map((g) => ({
         category: g.category || "Uncategorized",
         amount: g._sum.amount || 0,
       }));
+
+      const totalPayroll = payrolls._sum.netPayable || 0;
+      if (totalPayroll > 0) {
+        const existingSalaryIdx = report.findIndex(
+          (c) => c.category.toUpperCase() === "SALARY" || c.category.toUpperCase() === "WAGES"
+        );
+        if (existingSalaryIdx !== -1) {
+          report[existingSalaryIdx].amount += totalPayroll;
+        } else {
+          report.push({
+            category: "WAGES & SALARIES",
+            amount: totalPayroll,
+          });
+        }
+      }
 
       return NextResponse.json({ success: true, report });
     }
@@ -118,21 +155,34 @@ export async function GET(req: Request) {
         },
       });
 
-      // Fetch expenses for the selected year
+      // Fetch expenses and payroll for the selected year
       const startDate = new Date(year, 0, 1);
       const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
-      const expenses = await prisma.expense.findMany({
-        where: {
-          date: {
-            gte: startDate,
-            lte: endDate,
+      const [expenses, payrolls] = await Promise.all([
+        prisma.expense.findMany({
+          where: {
+            date: {
+              gte: startDate,
+              lte: endDate,
+            },
           },
-        },
-        select: {
-          date: true,
-          amount: true,
-        },
-      });
+          select: {
+            date: true,
+            amount: true,
+          },
+        }),
+        prisma.payroll.findMany({
+          where: {
+            month: {
+              startsWith: `${year}-`,
+            },
+          },
+          select: {
+            month: true,
+            netPayable: true,
+          },
+        }),
+      ]);
 
       // Map closely to monthly or cumulative overview
       const monthlySummary = Array.from({ length: 12 }, (_, i) => ({
@@ -169,6 +219,17 @@ export async function GET(req: Request) {
         const m = new Date(e.date).getMonth();
         if (m >= 0 && m < 12) {
           monthlySummary[m].expense += e.amount || 0;
+        }
+      });
+
+      // Aggregate payroll / salaries
+      payrolls.forEach((p) => {
+        const parts = p.month.split("-");
+        if (parts.length === 2) {
+          const m = parseInt(parts[1], 10) - 1;
+          if (m >= 0 && m < 12) {
+            monthlySummary[m].expense += p.netPayable || 0;
+          }
         }
       });
 
