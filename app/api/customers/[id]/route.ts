@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { requireRoles } from "@/lib/apiAuth";
-import type { Prisma } from "@prisma/client";
 
 interface CustomerUpdateRequest {
   customerName?: string;
@@ -20,29 +19,91 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   try {
     const { id } = await params;
-    const body = await req.json() as CustomerUpdateRequest;
+    const body = (await req.json()) as CustomerUpdateRequest;
 
-    const dataToUpdate: Prisma.CustomerUpdateInput = {};
+    const cleanPhone =
+      body.phoneNumber && body.phoneNumber.trim() !== "" && body.phoneNumber.toUpperCase() !== "N/A"
+        ? body.phoneNumber.trim()
+        : null;
 
-    if (body.customerName !== undefined) dataToUpdate.customerName = body.customerName;
-    if (body.phoneNumber !== undefined) dataToUpdate.phoneNumber = body.phoneNumber;
-    if (body.email !== undefined) dataToUpdate.email = body.email;
-    if (body.vehicleType !== undefined) dataToUpdate.vehicleType = body.vehicleType;
-    if (body.isBlacklisted !== undefined) dataToUpdate.isBlacklisted = body.isBlacklisted;
-    if (body.tag !== undefined) dataToUpdate.tag = body.tag;
+    const cleanEmail =
+      body.email && body.email.trim() !== "" && body.email.toUpperCase() !== "N/A"
+        ? body.email.trim()
+        : null;
 
-    if (body.password) {
-      dataToUpdate.password = await bcrypt.hash(body.password, 10);
+    // Check if phone number conflicts with an existing customer
+    if (cleanPhone) {
+      const existingByPhone = await prisma.customer.findUnique({
+        where: { phoneNumber: cleanPhone },
+      });
+      if (existingByPhone && existingByPhone.id !== id) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Phone number ${cleanPhone} is already registered to ${existingByPhone.customerName || "another customer"}.`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
-    const customer = await prisma.customer.update({
-      where: { id },
-      data: dataToUpdate,
-    });
+    // Check if customer exists in database
+    const existingCust = await prisma.customer.findUnique({ where: { id } });
+
+    let customer;
+    if (existingCust) {
+      customer = await prisma.customer.update({
+        where: { id },
+        data: {
+          customerName: body.customerName !== undefined ? body.customerName.trim() : existingCust.customerName,
+          phoneNumber: cleanPhone !== undefined ? cleanPhone : existingCust.phoneNumber,
+          email: cleanEmail !== undefined ? cleanEmail : existingCust.email,
+          vehicleType: body.vehicleType !== undefined ? body.vehicleType : existingCust.vehicleType,
+          isBlacklisted: body.isBlacklisted !== undefined ? body.isBlacklisted : existingCust.isBlacklisted,
+          tag: body.tag !== undefined ? body.tag : existingCust.tag,
+          primaryCategory: (body.tag ? body.tag : existingCust.primaryCategory) || "REGULAR",
+          ...(body.password ? { password: await bcrypt.hash(body.password, 10) } : {}),
+        },
+      });
+    } else {
+      // Customer record originated from aggregated transactions, create it in DB
+      customer = await prisma.customer.create({
+        data: {
+          customerName: body.customerName ? body.customerName.trim() : "Customer",
+          phoneNumber: cleanPhone,
+          email: cleanEmail,
+          vehicleType: body.vehicleType || null,
+          isBlacklisted: body.isBlacklisted || false,
+          tag: body.tag || "REGULAR",
+          primaryCategory: body.tag || "REGULAR",
+          ...(body.password ? { password: await bcrypt.hash(body.password, 10) } : {}),
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, customer });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Error updating customer:", error);
+    return NextResponse.json(
+      { success: false, message: error.message || "Failed to update customer." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(["admin", "manager"]);
+  if (auth.response) return auth.response;
+
+  try {
+    const { id } = await params;
+    const existing = await prisma.customer.findUnique({ where: { id } });
+    if (existing) {
+      await prisma.customer.delete({ where: { id } });
+    }
+    return NextResponse.json({ success: true, message: "Customer deleted successfully." });
+  } catch (error: any) {
+    console.error("Error deleting customer:", error);
+    return NextResponse.json({ success: false, message: error.message || "Failed to delete customer." }, { status: 500 });
   }
 }

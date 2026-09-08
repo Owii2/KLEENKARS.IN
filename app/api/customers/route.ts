@@ -28,17 +28,32 @@ export async function GET() {
 
     const customerMap = new Map<string, any>();
 
+    const getAutoTag = (spent: number, visits: number, explicitTag?: string | null, isBlacklisted?: boolean) => {
+      if (isBlacklisted) return "BLACKLISTED";
+      if (explicitTag && ["VIP", "REGULAR", "NEW"].includes(explicitTag.toUpperCase())) {
+        return explicitTag.toUpperCase();
+      }
+      if (spent >= 3000 || visits >= 5) return "VIP";
+      if (visits >= 2 || spent >= 1000) return "REGULAR";
+      return "NEW";
+    };
+
     // Add existing DB customers
     for (const c of dbCustomers) {
       const name = c.customerName || "Customer";
       const key = c.phoneNumber ? c.phoneNumber.trim() : name.toLowerCase().trim();
+      const spent = c.totalSpent || 0;
+      const visits = c.totalVisits || 1;
       customerMap.set(key, {
         id: c.id,
         customerName: name,
         phoneNumber: c.phoneNumber || "",
-        totalVisits: c.totalVisits || 1,
-        totalSpent: c.totalSpent || 0,
-        category: (c.totalSpent || 0) >= 5000 ? "VIP Elite" : (c.totalSpent || 0) >= 1500 ? "Regular" : "Standard",
+        email: c.email || null,
+        vehicleType: c.vehicleType || null,
+        totalVisits: visits,
+        totalSpent: spent,
+        tag: getAutoTag(spent, visits, c.tag || c.primaryCategory, c.isBlacklisted),
+        isBlacklisted: c.isBlacklisted || false,
         lastVisit: c.lastVisit ? c.lastVisit.toISOString().split("T")[0] : undefined,
       });
     }
@@ -58,7 +73,10 @@ export async function GET() {
         const existing = customerMap.get(key);
         existing.totalVisits += 1;
         existing.totalSpent += amt;
-        existing.category = existing.totalSpent >= 5000 ? "VIP Elite" : existing.totalSpent >= 1500 ? "Regular" : "Standard";
+        existing.tag = getAutoTag(existing.totalSpent, existing.totalVisits, existing.tag, existing.isBlacklisted);
+        if (t.vehicleType && !existing.vehicleType) {
+          existing.vehicleType = t.vehicleType;
+        }
         if (visitDate && (!existing.lastVisit || visitDate > existing.lastVisit)) {
           existing.lastVisit = visitDate;
         }
@@ -67,10 +85,13 @@ export async function GET() {
         customerMap.set(key, {
           id: cid,
           customerName: name,
-          phoneNumber: phone || "N/A",
+          phoneNumber: phone || "",
+          email: null,
+          vehicleType: t.vehicleType || null,
           totalVisits: 1,
           totalSpent: amt,
-          category: amt >= 5000 ? "VIP Elite" : amt >= 1500 ? "Regular" : "Standard",
+          tag: getAutoTag(amt, 1),
+          isBlacklisted: false,
           lastVisit: visitDate,
         });
       }
