@@ -27,6 +27,7 @@ import {
   Link2,
   Zap
 } from "lucide-react";
+import BharatPeReconciler from "./BharatPeReconciler";
 
 interface Transaction {
   id: string;
@@ -89,7 +90,7 @@ const DEFAULT_DETECTION_RULES = [
 ];
 
 export default function TransactionsConsole() {
-  const [activeSubTab, setActiveSubTab] = useState<"list" | "quick-entry" | "import" | "google-sheet">("list");
+  const [activeSubTab, setActiveSubTab] = useState<"list" | "quick-entry" | "bharatpe" | "import" | "google-sheet">("list");
   
   // Google Sheet Auto-Sync States
   const [googleSheetUrl, setGoogleSheetUrl] = useState("");
@@ -889,6 +890,16 @@ export default function TransactionsConsole() {
             }`}
           >
             <Plus size={16} /> Quick Entry
+          </button>
+          <button
+            onClick={() => setActiveSubTab("bharatpe")}
+            className={`px-5 py-2.5 rounded-2xl font-semibold transition text-sm flex items-center gap-2 ${
+              activeSubTab === "bharatpe"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-900/30"
+                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Zap size={16} className="text-purple-400" /> BharatPe Reconciler
           </button>
           <button
             onClick={() => setActiveSubTab("import")}
@@ -1889,6 +1900,11 @@ export default function TransactionsConsole() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* SUB TAB: BHARATPE RECONCILER */}
+      {activeSubTab === "bharatpe" && (
+        <BharatPeReconciler onReconciliationComplete={fetchTransactions} />
       )}
 
       {/* EDITING DRAWER / OVERLAY */}
