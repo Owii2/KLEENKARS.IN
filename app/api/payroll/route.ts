@@ -61,15 +61,16 @@ export async function POST(req: Request) {
 
         empAtt.forEach((a) => {
           const s = a.attendanceStatus?.trim().toLowerCase();
-          if (s === "present") presentCount += 1;
-          else if (s === "half day" || s === "halfday" || s === "half-day") halfDayCount += 1;
+          if (s === "present" || s === "p") presentCount += 1;
+          else if (s === "half day" || s === "halfday" || s === "half-day" || s === "hd" || s === "h" || s === "half") halfDayCount += 1;
         });
 
+        // 50% salary on half-day: Present = 1.0 day wage, Half Day = 0.5 day wage
         const calculatedWorkingDays = presentCount + (0.5 * halfDayCount);
         const wage = emp.salaryPerDay || 0;
-        const adv = emp.penalties || 0; // use penalties as initial advances/deductions
+        const adv = emp.penalties || 0; // use penalties as initial advances
         const ded = 0;
-        const calculatedNetPayable = Math.max((calculatedWorkingDays * wage) - adv, 0);
+        const calculatedNetPayable = Math.max(Math.round((calculatedWorkingDays * wage) - adv - ded), 0);
 
         // Check if payroll already exists for this employee and month
         const existing = await prisma.payroll.findFirst({

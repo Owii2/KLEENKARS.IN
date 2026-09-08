@@ -361,16 +361,22 @@ export async function POST(req: Request) {
         },
       });
 
+      // 50% wage for Half Days: Effective days = Present + (0.5 × Half Days)
+      const effectiveDays = presentDays + (0.5 * halfDays);
+      const dayWage = existingEmp?.salaryPerDay || (monthlySalary > 0 ? Math.round(monthlySalary / 30) : 500);
+      const computedGross = Math.round(effectiveDays * dayWage);
+      const computedNet = Math.max(0, computedGross - advanceGiven);
+
       const payrollPayload = {
         employeeId: employeeDbId || empId || "SYS",
         employeeName: empName || existingEmp?.name || "STAFF",
         employeeCode: empId || existingEmp?.employeeCode || "SYS",
         month: parsedMonth.monthKey,
-        workingDays: presentDays,
-        dailyWage: monthlySalary > 0 ? Math.round(monthlySalary / 30) : 500,
+        workingDays: Math.round(effectiveDays),
+        dailyWage: dayWage,
         advances: advanceGiven,
         deductions: Math.max(0, monthlySalary - finalSalary),
-        netPayable: netPayable || finalSalary - advanceGiven,
+        netPayable: netPayable || computedNet,
         status: "Paid",
       };
 
