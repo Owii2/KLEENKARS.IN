@@ -26,26 +26,6 @@ interface Employee {
   status: string;
 }
 
-// Quick links for admin navigation – displayed in a vertical sidebar
-const quickLinks = [
-  { href: "/admin/bookings", label: "Bookings", description: "Manage all bookings" },
-  { href: "/admin/branches", label: "🏢 Branches & Hubs", description: "Multi-branch setup & crew allocation" },
-  { href: "/admin/employees", label: "Employees", description: "Manage staff accounts" },
-  { href: "/admin/attendance", label: "Attendance", description: "Track daily staff attendance" },
-  { href: "/admin/customers", label: "Customers", description: "CRM and repeat customers" },
-  { href: "/admin/expenses", label: "Expenses", description: "Track operational costs" },
-  { href: "/admin/services", label: "Services & Pricing", description: "Manage wash packages and add‑ons" },
-  { href: "/admin/qr-hub", label: "📱 QR Hub & Links", description: "Customer QR portal, maps & review buttons" },
-  { href: "/admin/offers", label: "Offers & Coupons", description: "Configure active promo codes" },
-  { href: "/admin/referrals", label: "Referrals", description: "Reward customer referrals" },
-  { href: "/admin/approvals", label: "Approvals", description: "Review manager overrides" },
-  { href: "/admin/franchise", label: "Franchise", description: "Review franchise applications" },
-  { href: "/admin/daily-closing", label: "Daily Closing", description: "Close revenue and expenses" },
-  { href: "/admin/chatbot", label: "Chatbot Agent", description: "Manage FAQ knowledge base and view chats" },
-  { href: "/admin/blog", label: "Blog Posts", description: "Create and publish company blogs" },
-  { href: "/admin/settings", label: "Console Settings", description: "System settings and rules" },
-];
-
 const getBaseServiceName = (name: string) => {
   if (!name) return "";
   const parts = name.split(" - ");
@@ -456,24 +436,7 @@ export default function AdminPage() {
       {/* Error banner */}
       {error && <Card className="mb-8 text-red-400">{error}</Card>}
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Sidebar navigation */}
-        <nav className="w-full lg:w-64 bg-black bg-opacity-30 backdrop-filter backdrop-blur-lg rounded-xl p-4 glass-panel hidden lg:block">
-          <h2 className="text-xl font-semibold text-white mb-4">Admin Menu</h2>
-          <ul className="space-y-2">
-            {quickLinks.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="block p-3 rounded hover:bg-white/10 transition-colors">
-                  <span className="block font-medium text-gray-100">{link.label}</span>
-                  <span className="block text-xs text-gray-400">{link.description}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Main content */}
-        <div className="flex-1 space-y-6">
+      <div className="w-full space-y-6">
           {/* Quick Actions Shortcuts */}
           <div className="glass-panel p-6">
             <h2 className="text-xl font-bold text-red-400 mb-4">Quick Shortcuts</h2>
@@ -626,7 +589,6 @@ export default function AdminPage() {
               </div>
             )}
           </Card>
-        </div>
       </div>
     </DashboardLayout>
   );

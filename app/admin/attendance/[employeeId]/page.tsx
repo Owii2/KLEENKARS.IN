@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import Card from "@/components/ui/Card";
@@ -38,11 +38,9 @@ const monthNames = [
   "December",
 ];
 
-export default function EmployeeAttendancePage({
-  params,
-}: {
-  params: { employeeId: string };
-}) {
+export default function EmployeeAttendancePage() {
+  const routeParams = useParams<{ employeeId: string }>();
+  const employeeId = routeParams?.employeeId || "";
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +50,7 @@ export default function EmployeeAttendancePage({
   const searchParams = useSearchParams();
 
   const fetchData = useCallback(async () => {
+    if (!employeeId) return;
     setLoading(true);
     setError("");
 
@@ -73,7 +72,7 @@ export default function EmployeeAttendancePage({
 
       setAttendance(attendanceData.attendance || []);
       const found = (employeesData.employees || []).find(
-        (item: Employee) => item.id === params.employeeId
+        (item: Employee) => item.id === employeeId
       );
       setEmployee(found ?? null);
     } catch (err) {
@@ -81,7 +80,7 @@ export default function EmployeeAttendancePage({
     } finally {
       setLoading(false);
     }
-  }, [params.employeeId]);
+  }, [employeeId]);
 
   useEffect(() => {
     const yearParam = searchParams?.get("year");
@@ -94,7 +93,7 @@ export default function EmployeeAttendancePage({
     fetchData();
   }, [fetchData, searchParams]);
 
-  const employeeAttendance = attendance.filter((item) => item.employeeId === params.employeeId);
+  const employeeAttendance = attendance.filter((item) => item.employeeId === employeeId);
 
   const monthlySummary = useMemo(() => {
     const summary = monthNames.map((name, index) => ({
@@ -108,12 +107,17 @@ export default function EmployeeAttendancePage({
     employeeAttendance.forEach((record) => {
       const date = new Date(record.checkIn);
       if (date.getFullYear() !== selectedYear) return;
-      const month = date.getMonth();
-      const bucket = summary[month];
-      if (!bucket) return;
-      if (record.attendanceStatus === "Present") bucket.present += 1;
-      else if (record.attendanceStatus === "Absent") bucket.absent += 1;
-      else if (record.attendanceStatus === "Half Day") bucket.halfDay += 1;
+
+      const monthIndex = date.getMonth();
+      const status = record.attendanceStatus?.trim().toLowerCase();
+
+      if (status === "present") {
+        summary[monthIndex].present += 1;
+      } else if (status === "absent") {
+        summary[monthIndex].absent += 1;
+      } else if (status === "half day") {
+        summary[monthIndex].halfDay += 1;
+      }
     });
 
     return summary;
@@ -122,110 +126,110 @@ export default function EmployeeAttendancePage({
   const totalPresent = monthlySummary.reduce((sum, item) => sum + item.present, 0);
   const totalAbsent = monthlySummary.reduce((sum, item) => sum + item.absent, 0);
   const totalHalfDay = monthlySummary.reduce((sum, item) => sum + item.halfDay, 0);
-  const yearOptions = [currentYear - 3, currentYear - 2, currentYear - 1, currentYear].filter((y) => y >= 2000);
-
-  if (loading) {
-    return (
-      <DashboardLayout title="Attendance Details">
-        <Card>Loading employee attendance...</Card>
-      </DashboardLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <DashboardLayout title="Attendance Details">
-        <Card className="text-red-400">{error}</Card>
-      </DashboardLayout>
-    );
-  }
-
-  if (!employee) {
-    return (
-      <DashboardLayout title="Attendance Details">
-        <Card className="text-red-400">Employee not found.</Card>
-      </DashboardLayout>
-    );
-  }
+  const calculatedAttendancePercent =
+    totalPresent + totalAbsent + totalHalfDay > 0
+      ? Math.round(
+          ((totalPresent + totalHalfDay * 0.5) /
+            (totalPresent + totalAbsent + totalHalfDay)) *
+            100
+        )
+      : 100;
 
   return (
-    <DashboardLayout title={`Attendance for ${employee.name}`}>
-      <Card className="mb-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm text-gray-400">Employee</p>
-            <h1 className="text-3xl font-bold text-white">{employee.name}</h1>
-            <p className="text-sm text-gray-400">{employee.employeeCode}</p>
-          </div>
+    <DashboardLayout title="Employee Attendance">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
           <Link
             href="/admin/attendance"
-            className="inline-flex items-center rounded-lg border border-gray-700 bg-black px-4 py-2 text-sm text-white hover:border-red-500"
+            className="text-sm text-gray-400 hover:text-white transition inline-flex items-center gap-2 mb-2"
           >
-            Back to active staff
+            ← Back to Attendance
           </Link>
+          <h1 className="text-2xl font-bold text-white">
+            {employee ? `${employee.name} (${employee.employeeCode})` : "Employee Attendance"}
+          </h1>
         </div>
-      </Card>
 
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card className="bg-[#111] p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-gray-400">Year</p>
-              <p className="text-2xl font-bold text-white">{selectedYear}</p>
-            </div>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-black border border-gray-700 p-2 rounded-lg text-sm"
-            >
-              {yearOptions.map((yearOption) => (
-                <option key={yearOption} value={yearOption}>
-                  {yearOption}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="year-select" className="text-sm text-gray-400">
+            Year:
+          </label>
+          <select
+            id="year-select"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+          >
+            {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map((year) => (
+              <option key={year} value={year} className="bg-black text-white">
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card>
+          <p className="text-xs text-gray-400">Total Present</p>
+          <p className="text-2xl font-bold text-green-400 mt-2">{totalPresent} Days</p>
         </Card>
-        <Card className="bg-[#111] p-6">
-          <p className="text-sm text-gray-400">Present</p>
-          <p className="text-2xl font-bold text-green-400">{totalPresent}</p>
+        <Card>
+          <p className="text-xs text-gray-400">Total Absent</p>
+          <p className="text-2xl font-bold text-red-400 mt-2">{totalAbsent} Days</p>
         </Card>
-        <Card className="bg-[#111] p-6">
-          <p className="text-sm text-gray-400">Absent</p>
-          <p className="text-2xl font-bold text-red-400">{totalAbsent}</p>
+        <Card>
+          <p className="text-xs text-gray-400">Total Half Days</p>
+          <p className="text-2xl font-bold text-yellow-400 mt-2">{totalHalfDay} Days</p>
         </Card>
-        <Card className="bg-[#111] p-6">
-          <p className="text-sm text-gray-400">Half Day</p>
-          <p className="text-2xl font-bold text-yellow-400">{totalHalfDay}</p>
+        <Card>
+          <p className="text-xs text-gray-400">Attendance Rate</p>
+          <p className="text-2xl font-bold text-white mt-2">
+            {calculatedAttendancePercent}%
+          </p>
         </Card>
       </div>
 
       <Card>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {monthlySummary.map((month) => (
-            <Link
-              key={month.number}
-              href={`/admin/attendance/${employee.id}/${month.number}?year=${selectedYear}`}
-              className="group rounded-2xl border border-gray-800 bg-[#111] p-6 transition hover:border-red-500"
-            >
-              <p className="text-sm text-gray-400">{month.month}</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">{month.present + month.absent + month.halfDay} records</h2>
-              <div className="mt-4 grid gap-2">
-                <div className="flex items-center justify-between text-sm text-gray-400">
-                  <span>Present</span>
-                  <span className="font-bold text-green-300">{month.present}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm text-gray-400">
-                  <span>Absent</span>
-                  <span className="font-bold text-red-300">{month.absent}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm text-gray-400">
-                  <span>Half Day</span>
-                  <span className="font-bold text-yellow-300">{month.halfDay}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
+        {error ? <p className="text-red-400 mb-4">{error}</p> : null}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-left">
+            <thead>
+              <tr className="bg-red-600 text-white">
+                <th className="p-3">Month</th>
+                <th className="p-3">Present</th>
+                <th className="p-3">Absent</th>
+                <th className="p-3">Half Day</th>
+                <th className="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td className="p-4" colSpan={5}>
+                    Loading attendance data...
+                  </td>
+                </tr>
+              ) : (
+                monthlySummary.map((month) => (
+                  <tr key={month.month} className="border-b border-gray-800">
+                    <td className="p-3 font-semibold">{month.month}</td>
+                    <td className="p-3 text-green-400">{month.present}</td>
+                    <td className="p-3 text-red-400">{month.absent}</td>
+                    <td className="p-3 text-yellow-400">{month.halfDay}</td>
+                    <td className="p-3">
+                      <Link
+                        href={`/admin/attendance/${employeeId}/${month.number}?year=${selectedYear}`}
+                        className="text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:text-white transition"
+                      >
+                        View Details
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
     </DashboardLayout>

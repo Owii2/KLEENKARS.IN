@@ -90,7 +90,15 @@ export default function EditPost() {
 
   return (
     <DashboardLayout title="Edit Blog Post">
-      <GlassPanel className="max-w-3xl mx-auto mt-8">
+      <div className="max-w-3xl mx-auto mb-4 flex justify-between items-center">
+        <a 
+          href="/admin/blog" 
+          className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 transition"
+        >
+          ← Back to Blog Posts
+        </a>
+      </div>
+      <GlassPanel className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-4">Edit Post</h1>
         <form onSubmit={submit} className="space-y-4">
           <input

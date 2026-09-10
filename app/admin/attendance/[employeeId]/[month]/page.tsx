@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import Card from "@/components/ui/Card";
@@ -37,23 +38,25 @@ const monthNames = [
   "December",
 ];
 
-export default function EmployeeAttendanceMonthPage({
-  params,
-  searchParams,
-}: {
-  params: { employeeId: string; month: string };
-  searchParams: { year?: string };
-}) {
+export default function EmployeeAttendanceMonthPage() {
+  const routeParams = useParams<{ employeeId: string; month: string }>();
+  const searchParams = useSearchParams();
+
+  const employeeId = routeParams?.employeeId || "";
+  const monthParam = routeParams?.month || "1";
+
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const currentYear = new Date().getFullYear();
-  const year = searchParams.year ? Number(searchParams.year) : currentYear;
-  const monthIndex = Number(params.month) - 1;
+  const yearQuery = searchParams?.get("year");
+  const year = yearQuery ? Number(yearQuery) : currentYear;
+  const monthIndex = Number(monthParam) - 1;
   const monthName = monthNames[monthIndex] || "Unknown";
 
   const fetchData = useCallback(async () => {
+    if (!employeeId) return;
     setLoading(true);
     setError("");
 
@@ -75,7 +78,7 @@ export default function EmployeeAttendanceMonthPage({
 
       setAttendance(attendanceData.attendance || []);
       const found = (employeesData.employees || []).find(
-        (item: Employee) => item.id === params.employeeId
+        (item: Employee) => item.id === employeeId
       );
       setEmployee(found ?? null);
     } catch (err) {
@@ -83,7 +86,7 @@ export default function EmployeeAttendanceMonthPage({
     } finally {
       setLoading(false);
     }
-  }, [params.employeeId]);
+  }, [employeeId]);
 
   useEffect(() => {
     fetchData();
@@ -94,12 +97,12 @@ export default function EmployeeAttendanceMonthPage({
     return attendance.filter((item) => {
       const date = new Date(item.checkIn);
       return (
-        item.employeeId === params.employeeId &&
+        item.employeeId === employeeId &&
         date.getFullYear() === year &&
         date.getMonth() === monthIndex
       );
     });
-  }, [attendance, params.employeeId, monthIndex, year]);
+  }, [attendance, employeeId, monthIndex, year]);
 
   const presentCount = selectedRecords.filter((item) => item.attendanceStatus === "Present").length;
   const absentCount = selectedRecords.filter((item) => item.attendanceStatus === "Absent").length;

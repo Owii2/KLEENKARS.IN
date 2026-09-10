@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 interface Employee {
@@ -739,6 +740,23 @@ export default function EmployeePage() {
                   <div className="text-gray-500 text-xs font-semibold">Rating</div>
                   <div className="text-xl font-bold text-yellow-500 mt-1">★ {(drawerData.customerRating || 5.0).toFixed(1)}</div>
                 </div>
+              </div>
+
+              {/* Direct Quick Attendance Interlink */}
+              <div className="flex items-center justify-between p-3.5 bg-red-600/10 border border-red-500/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">📅</span>
+                  <div>
+                    <p className="text-xs font-semibold text-white">Attendance Records &amp; Calendar</p>
+                    <p className="text-[11px] text-gray-400">View daily check-ins, monthly summaries &amp; pay calculations</p>
+                  </div>
+                </div>
+                <Link
+                  href={`/admin/attendance/${drawerData.id}`}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shrink-0"
+                >
+                  View Attendance →
+                </Link>
               </div>
 
               {/* Grid sections */}
